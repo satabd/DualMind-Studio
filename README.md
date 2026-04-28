@@ -1,6 +1,6 @@
 # DualMind Studio
 
-DualMind Studio is the successor track to LLM Orchestrator: a browser-based Chromium extension for running structured collaboration between ChatGPT and Gemini directly from signed-in tabs, while evolving toward layered prompt architecture, memory, identity, and deeper agent operating models.
+DualMind Studio is a browser-based Chromium extension for running structured collaboration between ChatGPT and Gemini directly from signed-in tabs, while evolving toward layered prompt architecture, memory, identity, and deeper agent operating models.
 
 ## No API Keys Required
 
@@ -9,6 +9,16 @@ This repository does not require OpenAI API keys or Gemini API keys.
 - It works by automating the browser versions of ChatGPT and Gemini in tabs where you are already signed in.
 - There is no built-in backend proxy or server-side secret exchange in this repository.
 - Your browser session with those services is what powers the workflow.
+
+## Repo Metadata
+
+Suggested GitHub description:
+
+> Browser-based multi-agent studio for ChatGPT and Gemini with no API keys, evolving toward memory, identity, and layered prompting.
+
+Suggested About text:
+
+> DualMind Studio is the successor to LLM Orchestrator: a Chromium side-panel workspace that coordinates ChatGPT and Gemini directly through signed-in browser tabs. The roadmap focuses on memory, prompt layers, identity, operating style, and stronger session continuity without requiring API keys.
 
 ## Positioning
 
@@ -21,12 +31,49 @@ DualMind Studio starts from the proven browser-orchestration base of the origina
 - richer moderation and escalation behavior
 - stronger session continuity
 
-## Near-Term Roadmap
+## Pinned Roadmap
 
-1. Introduce a prompt-layer model with separate protocol, identity, style, memory, and turn-task composition.
-2. Add memory primitives for local session recall and structured carry-forward context.
-3. Rework session setup so agent personality and collaboration architecture are first-class concepts.
-4. Preserve the no-API-key browser-based workflow while improving output reliability and session continuity.
+### Phase 1: Agent Foundations
+
+- separate protocol, identity, style, memory, context, and turn-task prompt layers
+- define a shared prompt blueprint model in code
+- make prompt construction explicit and inspectable
+
+### Phase 2: Memory And Continuity
+
+- add local-first memory primitives
+- carry forward session conclusions, decisions, and open questions
+- support memory-aware resumes and branch continuity
+
+### Phase 3: Studio UX
+
+- expose identity and operating style as first-class UI concepts
+- show memory usage and prompt composition transparently
+- make agent architecture easier to configure without leaking too much complexity
+
+### Phase 4: Reliability
+
+- improve drift resistance
+- improve evidence labeling and uncertainty handling
+- reduce repetitive loops with stronger convergence controls
+
+## v0.2.0 Milestone Focus
+
+The first major milestone should establish the architectural core for DualMind Studio:
+
+- Prompt Blueprint model
+- layered prompt composer
+- local memory schema
+- memory-aware resume flow
+- advanced setup UI for identity/style/memory controls
+
+See [docs/github-milestone-v0.2.0.md](./docs/github-milestone-v0.2.0.md).
+
+## Architecture
+
+- [Prompt Layer Architecture](./docs/architecture-prompt-layers.md)
+- [DualMind Roadmap](./docs/dualmind-roadmap.md)
+- [Issue Drafts](./docs/issues)
 
 ## Current Base
 
