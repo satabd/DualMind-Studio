@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    body {
+      width: 200px;
+      padding: 10px;
+      font-family: sans-serif;
+      text-align: center;
+    }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    [dir="rtl"] .header-row {
+      flex-direction: row-reverse;
+    }
+
+    .header-row h3 {
+      margin: 0;
+    }
+
+    .lang-btn {
+      background: none;
+      color: #2196f3;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font-size: 14px;
+      width: auto;
+    }
+
+    .lang-btn:hover {
+      background: none;
+      text-decoration: underline;
+    }
+
+    button {
+      padding: 10px;
+      width: 100%;
+      background: #2196f3;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    button:hover {
+      background: #1976d2;
+    }
+
+    p {
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header-row">
+    <h3 data-i18n="appTitle">DualMind Studio</h3>
+    <button id="langToggleBtn" class="lang-btn">عربي</button>
+  </div>
+  <p data-i18n="controlFromPanel">Control the orchestration from the Side Panel.</p>
+  <button id="openPanelBtn" data-i18n="openSidePanel">Open Side Panel</button>
+  <script type="module" src="popup.ts"></script>
+</body>
+
+</html>

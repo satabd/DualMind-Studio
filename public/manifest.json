@@ -1,0 +1,29 @@
+{
+    "manifest_version": 3,
+    "name": "DualMind Studio",
+    "version": "0.1.0",
+    "description": "Browser-based multi-agent studio for ChatGPT and Gemini. No API keys required.",
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "clipboardWrite",
+        "storage",
+        "tabs",
+        "sidePanel"
+    ],
+    "host_permissions": [
+        "https://gemini.google.com/*",
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://*.openai.com/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_title": "Open DualMind Studio"
+    },
+    "side_panel": {
+        "default_path": "panel.html"
+    }
+}

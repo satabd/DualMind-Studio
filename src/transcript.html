@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcript - DualMind Studio</title>
+    <link rel="stylesheet" href="transcript.css">
+</head>
+
+<body>
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <h1 id="transcriptTitle">Chat Transcript</h1>
+            <span id="transcriptMeta" class="meta-info"></span>
+        </div>
+        <div class="toolbar-right">
+            <button id="downloadBtn" class="btn primary">Download Markdown</button>
+            <button id="printBtn" class="btn secondary">Print</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div id="content" class="markdown-body">
+            <!-- Formatted HTML will be inserted here -->
+            <div class="loading">Loading transcript...</div>
+        </div>
+    </div>
+
+    <script type="module" src="transcript.ts"></script>
+</body>
+
+</html>

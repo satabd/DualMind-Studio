@@ -1,0 +1,247 @@
+export type Language = 'en' | 'ar';
+
+export const translations = {
+    en: {
+        "appTitle": "DualMind Studio",
+        "idle": "Idle",
+        "running": "Running",
+        "paused": "Paused",
+        "activeRun": "Active Run",
+        "history": "History",
+        "configuration": "Configuration",
+        "agentSetup": "Agent Setup",
+        "sessionDesign": "Session Design",
+        "geminiTab": "Gemini Tab",
+        "detecting": "Detecting...",
+        "noTabsFound": "No tabs found",
+        "chatGPTTab": "ChatGPT Tab",
+        "rounds": "Rounds",
+        "mode": "Session Type",
+        "pingPong": "Collaborative Exchange",
+        "geminiOnly": "Gemini Only",
+        "chatGptOnly": "ChatGPT Only",
+        "discussionMode": "Agent Workshop",
+        "collaborativeHelp": "Collaborative Exchange: Gemini opens the run and ChatGPT responds. They build on your prompt while referencing each other.",
+        "role": "Collaboration Style",
+        "roleCritic": "Critic (Refiner vs Critic)",
+        "roleExpander": "Expander (Yes, And...)",
+        "roleArchitect": "Architect (Visionary vs Architect)",
+        "roleDevilAdvocate": "Devil's Advocate (Proposer vs Destroyer)",
+        "roleFirstPrinciples": "First Principles (Deconstructor vs Synthesizer)",
+        "roleInterviewer": "Interviewer (Journalist vs Domain Expert)",
+        "roleFiveWhys": "Five Whys (Root Cause Analysis)",
+        "roleTimeJump": "Time Jump (Historian vs Futurist)",
+        "roleEli5": "Explain Like I'm 5 (Academic vs ELI5)",
+        "roleCustom": "Custom System Prompts...",
+        "geminiPrompt": "Gemini System Prompt",
+        "geminiPromptPlaceholder": "Instructions for Gemini...",
+        "chatGptPrompt": "ChatGPT System Prompt",
+        "chatGptPromptPlaceholder": "Instructions for ChatGPT...",
+        "seedPromptTopic": "Seed Prompt / Topic",
+        "topicPlaceholder": "Enter topic or question...",
+        "startRun": "Start Run",
+        "monitorLive": "Monitor Live",
+        "pause": "Pause",
+        "stop": "Stop",
+        "humanModerator": "Human Moderator",
+        "injectFeedback": "Inject Feedback (Course-Correct)",
+        "feedbackPlaceholder": "Type instructions here. The engine will read them and forward them to the next AI in the loop...",
+        "resumeWithFeedback": "Resume with Feedback",
+        "resumeSilently": "Resume Silently",
+        "logs": "Logs",
+        "clear": "Clear",
+        "readyToStart": "Ready to start.",
+        "postRunActions": "Post-Run Actions",
+        "additionalRounds": "Additional Rounds",
+        "continue": "Continue",
+        "finalConclusion": "Final Conclusion",
+        "export": "Export",
+        "lastResponse": "Last Response",
+        "fullTranscript": "Full Transcript",
+        "pastSessions": "Past Sessions",
+        "refresh": "Refresh",
+        "loadingHistory": "Loading history...",
+        "loading": "Loading...",
+        "noHistoryFound": "No history found.",
+        "sessionDetails": "Session Details",
+        "close": "Close",
+        "controlFromPanel": "Control the orchestration from the Side Panel.",
+        "openSidePanel": "Open Side Panel",
+        "openSidePanelFallback": "Right-click Icon > Open Side Panel",
+        "errorTabsMissing": "Error: Please select both Gemini and ChatGPT tabs.",
+        "errorTopicEmpty": "Error: Topic is empty.",
+        "systemStartCommand": "System: Start command sent.",
+        "liveMonitorOpened": "Live monitor opened.",
+        "liveMonitorUnavailable": "Live monitor is available only during an active run.",
+        "enterFeedback": "Please enter feedback before resuming.",
+        "continuing": "Continuing...",
+        "failedToContinue": "Failed to continue.",
+        "generatingConclusion": "Generating Conclusion...",
+        "failedToGenerate": "Failed to generate.",
+        "conclusionGenerated": "Conclusion generated.",
+        "exporting": "Exporting...",
+        "noTabSelected": "No tab selected.",
+        "errorCommunicating": "Error communicating with tab.",
+        "noContentFound": "No content found.",
+        "exportDone": "Export done.",
+        "exportFailed": "Export failed.",
+        "deleteConfirm": "Delete this session record?",
+        "clearLocalData": "Clear Local Data",
+        "clearLocalDataConfirm": "Delete all saved sessions, profiles, exports, and local orchestrator data on this device?",
+        "clearLocalDataDone": "Local orchestrator data cleared.",
+        "clearLocalDataFailed": "Failed to clear local data.",
+        "view": "View",
+        "del": "Del",
+        "escalationTriggered": "Escalation Triggered",
+        "escalationReason": "Reason",
+        "decisionNeeded": "Decision Needed",
+        "options": "Options",
+        "recommendedOption": "Recommended",
+        "yourDecision": "Your Decision",
+        "resolveEscalation": "Resolve Escalation",
+        "decisionPlaceholder": "Type your decision here to resolve the escalation...",
+        "discussionHelp": "Agent Workshop: the models work directly with each other while you observe. The session pauses only when they need a decision or moderator guidance."
+    },
+    ar: {
+        "appTitle": "استوديو العقلين",
+        "idle": "خامل",
+        "running": "قيد التشغيل",
+        "paused": "متوقف مؤقتاً",
+        "activeRun": "التشغيل الحالي",
+        "history": "السجل",
+        "configuration": "الإعدادات",
+        "agentSetup": "إعداد الوكلاء",
+        "sessionDesign": "تصميم الجلسة",
+        "geminiTab": "علامة تبويب Gemini",
+        "detecting": "جارِ الكشف...",
+        "noTabsFound": "لم يتم العثور على علامات تبويب",
+        "chatGPTTab": "علامة تبويب ChatGPT",
+        "rounds": "الجولات",
+        "mode": "نوع الجلسة",
+        "pingPong": "تبادل تعاوني",
+        "geminiOnly": "Gemini فقط",
+        "chatGptOnly": "ChatGPT فقط",
+        "discussionMode": "ورشة الوكلاء",
+        "collaborativeHelp": "التبادل التعاوني: يبدأ Gemini الجلسة ويرد ChatGPT بعده. يعملان على طلبك مع الرجوع إلى أفكار بعضهما.",
+        "role": "أسلوب التعاون",
+        "roleCritic": "ناقد (منقح مقابل ناقد)",
+        "roleExpander": "موسع (نعم، و...)",
+        "roleArchitect": "مهندس (صاحب رؤية مقابل مهندس)",
+        "roleDevilAdvocate": "محامي الشيطان (مقترح مقابل مدمر)",
+        "roleFirstPrinciples": "المبادئ الأولى (مفكك مقابل مركب)",
+        "roleInterviewer": "محاور (صحفي مقابل خبير مجال)",
+        "roleFiveWhys": "لماذا الخمسة (تحليل السبب الجذري)",
+        "roleTimeJump": "قفزة زمنية (مؤرخ مقابل مستقبلي)",
+        "roleEli5": "اشرح لي كأني طفل (أكاديمي مقابل ELI5)",
+        "roleCustom": "مطالبات نظام مخصصة...",
+        "geminiPrompt": "مطالبة نظام Gemini",
+        "geminiPromptPlaceholder": "تعليمات لـ Gemini...",
+        "chatGptPrompt": "مطالبة نظام ChatGPT",
+        "chatGptPromptPlaceholder": "تعليمات لـ ChatGPT...",
+        "seedPromptTopic": "المطالبة الأساسية / الموضوع",
+        "topicPlaceholder": "أدخل موضوعاً أو سؤالاً...",
+        "startRun": "بدء التشغيل",
+        "monitorLive": "مراقبة مباشرة",
+        "pause": "إيقاف مؤقت",
+        "stop": "إيقاف",
+        "humanModerator": "مشرف بشري",
+        "injectFeedback": "إدخال ملاحظات (تصحيح المسار)",
+        "feedbackPlaceholder": "اكتب التعليمات هنا. سيقوم المحرك بقراءتها وتوجيهها إلى الذكاء الاصطناعي التالي...",
+        "resumeWithFeedback": "استئناف مع الملاحظات",
+        "resumeSilently": "استئناف صامت",
+        "logs": "السجلات",
+        "clear": "مسح",
+        "readyToStart": "جاهز للبدء.",
+        "postRunActions": "إجراءات ما بعد التشغيل",
+        "additionalRounds": "جولات إضافية",
+        "continue": "متابعة",
+        "finalConclusion": "الخلاصة النهائية",
+        "export": "تصدير",
+        "lastResponse": "الاستجابة الأخيرة",
+        "fullTranscript": "النص الكامل",
+        "pastSessions": "الجلسات السابقة",
+        "refresh": "تحديث",
+        "loadingHistory": "جارِ تحميل السجل...",
+        "loading": "جارِ التحميل...",
+        "noHistoryFound": "لم يتم العثور على سجل.",
+        "sessionDetails": "تفاصيل الجلسة",
+        "close": "إغلاق",
+        "controlFromPanel": "تحكم في التنسيق من اللوحة الجانبية.",
+        "openSidePanel": "فتح اللوحة الجانبية",
+        "openSidePanelFallback": "انقر بزر الماوس الأيمن على الأيقونة > فتح اللوحة الجانبية",
+        "errorTabsMissing": "خطأ: يرجى تحديد علامتي تبويب Gemini و ChatGPT.",
+        "errorTopicEmpty": "خطأ: الموضوع فارغ.",
+        "systemStartCommand": "النظام: تم إرسال أمر البدء.",
+        "liveMonitorOpened": "تم فتح المراقبة المباشرة.",
+        "liveMonitorUnavailable": "المراقبة المباشرة متاحة فقط أثناء الجلسة النشطة.",
+        "enterFeedback": "يرجى إدخال الملاحظات قبل الاستئناف.",
+        "continuing": "جارِ المتابعة...",
+        "failedToContinue": "فشل المتابعة.",
+        "generatingConclusion": "جارِ إنشاء الخلاصة...",
+        "failedToGenerate": "فشل الإنشاء.",
+        "conclusionGenerated": "تم إنشاء الخلاصة.",
+        "exporting": "جارِ التصدير...",
+        "noTabSelected": "لم يتم تحديد علامة تبويب.",
+        "errorCommunicating": "خطأ في الاتصال بعلامة التبويب.",
+        "noContentFound": "لم يتم العثور على محتوى.",
+        "exportDone": "تم التصدير.",
+        "exportFailed": "فشل التصدير.",
+        "deleteConfirm": "هل تريد حذف سجل هذه الجلسة؟",
+        "clearLocalData": "مسح البيانات المحلية",
+        "clearLocalDataConfirm": "هل تريد حذف جميع الجلسات المحفوظة والملفات المصدرة والملفات الشخصية وبيانات المنسق المحلية على هذا الجهاز؟",
+        "clearLocalDataDone": "تم مسح بيانات المنسق المحلية.",
+        "clearLocalDataFailed": "فشل مسح البيانات المحلية.",
+        "view": "عرض",
+        "del": "حذف",
+        "escalationTriggered": "تم تفعيل التصعيد",
+        "escalationReason": "السبب",
+        "decisionNeeded": "القرار المطلوب",
+        "options": "الخيارات",
+        "recommendedOption": "الموصى به",
+        "yourDecision": "قرارك",
+        "resolveEscalation": "حل التصعيد",
+        "decisionPlaceholder": "اكتب قرارك هنا لحل التصعيد...",
+        "discussionHelp": "ورشة الوكلاء: يعمل النموذجان مباشرة مع بعضهما بينما تراقب أنت. تتوقف الجلسة فقط عندما يحتاجان إلى قرار أو توجيه من المشرف."
+    }
+};
+
+export function getLanguage(): Promise<Language> {
+    return new Promise((resolve) => {
+        chrome.storage.local.get(['uiLanguage'], (result) => {
+            resolve((result.uiLanguage as Language) || 'en');
+        });
+    });
+}
+
+export function setLanguage(lang: Language): Promise<void> {
+    return new Promise((resolve) => {
+        chrome.storage.local.set({ uiLanguage: lang }, () => {
+            document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+            document.documentElement.lang = lang;
+            resolve();
+        });
+    });
+}
+
+export function t(key: keyof typeof translations['en'], lang: Language): string {
+    return translations[lang][key] || translations['en'][key] || key;
+}
+
+export function applyTranslationsToDOM(lang: Language) {
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = lang;
+    
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.getAttribute('data-i18n') as keyof typeof translations['en'];
+        if (key && translations[lang][key]) {
+            el.textContent = translations[lang][key];
+        }
+    });
+
+    document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+        const key = el.getAttribute('data-i18n-placeholder') as keyof typeof translations['en'];
+        if (key && translations[lang][key]) {
+            (el as HTMLInputElement | HTMLTextAreaElement).placeholder = translations[lang][key];
+        }
+    });
+}
