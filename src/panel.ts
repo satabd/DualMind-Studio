@@ -1,5 +1,6 @@
 import { applyTranslationsToDOM, getLanguage, setLanguage, t, Language } from './i18n.js';
-import { AgentSpeaker, BrainstormSession, BrainstormState, FinaleType, StudioProfile, TranscriptEntry } from './types.js';
+import { AgentSpeaker, BrainstormSession, BrainstormState, FinaleType, MemoryEntry, StudioProfile, TranscriptEntry } from './types.js';
+import { selectPromptMemory } from './sessionMemory.js';
 
 type OutputTab = "transcript" | "highlights" | "ideas" | "finales";
 
@@ -50,6 +51,12 @@ const ELEMENTS = {
     concludeBtn: document.getElementById('concludeBtn') as HTMLButtonElement,
     postRunStatus: document.getElementById('postRunStatus') as HTMLElement,
     framingCard: document.getElementById('framingCard') as HTMLElement,
+    memoryPreviewCard: document.getElementById('memoryPreviewCard') as HTMLElement,
+    memoryPreviewList: document.getElementById('memoryPreviewList') as HTMLElement,
+    memoryPreviewCount: document.getElementById('memoryPreviewCount') as HTMLElement,
+    promptMemoryList: document.getElementById('promptMemoryList') as HTMLElement,
+    promptMemoryCount: document.getElementById('promptMemoryCount') as HTMLElement,
+    clearMemoryBtn: document.getElementById('clearMemoryBtn') as HTMLButtonElement,
     checkpointCards: document.getElementById('checkpointCards') as HTMLElement,
     timelineList: document.getElementById('timelineList') as HTMLElement,
     geminiRail: document.getElementById('geminiRail') as HTMLElement,
@@ -263,6 +270,64 @@ function renderFraming() {
         <div><strong>Success:</strong> ${framing.successCriteria.map(item => escapeHtml(item)).join(' | ')}</div>`;
 }
 
+function renderMemoryPreview() {
+    const entries = currentSession?.memory?.entries || [];
+    ELEMENTS.memoryPreviewCount.textContent = String(entries.length);
+    ELEMENTS.clearMemoryBtn.disabled = !currentSession || entries.length === 0;
+    if (!entries.length) {
+        ELEMENTS.memoryPreviewList.innerHTML = `<div class="status-text">${t('memoryPreviewEmpty', currentLang)}</div>`;
+        return;
+    }
+
+    // EN: Show the newest compact memory entries without exposing raw transcript replay.
+    // AR: نعرض أحدث عناصر الذاكرة المختصرة دون كشف سجل المحادثة الخام.
+    ELEMENTS.memoryPreviewList.innerHTML = '';
+    entries.slice(-6).reverse().forEach(entry => {
+        ELEMENTS.memoryPreviewList.appendChild(createMemoryEntryElement(entry));
+    });
+}
+
+function renderPromptMemoryPreview() {
+    const promptMemory = selectPromptMemory(currentSession?.memory);
+    const entries = promptMemory.entries;
+    ELEMENTS.promptMemoryCount.textContent = String(entries.length);
+    if (!entries.length) {
+        ELEMENTS.promptMemoryList.innerHTML = `<div class="status-text">${t('promptMemoryEmpty', currentLang)}</div>`;
+        return;
+    }
+
+    ELEMENTS.promptMemoryList.innerHTML = '';
+    entries.forEach(entry => {
+        ELEMENTS.promptMemoryList.appendChild(createMemoryEntryElement(entry, false));
+    });
+}
+
+function createMemoryEntryElement(entry: MemoryEntry, allowPrune = true) {
+    const item = document.createElement('div');
+    item.className = 'memory-entry';
+
+    const kind = document.createElement('span');
+    kind.className = 'memory-kind';
+    kind.textContent = entry.kind.replace('_', ' ');
+
+    const text = document.createElement('span');
+    text.textContent = entry.text;
+
+    const actions = document.createElement('div');
+    actions.className = 'memory-entry-actions';
+    if (allowPrune) {
+        const pruneBtn = document.createElement('button');
+        pruneBtn.className = 'btn link';
+        pruneBtn.type = 'button';
+        pruneBtn.textContent = t('pruneMemoryEntry', currentLang);
+        pruneBtn.onclick = () => pruneSessionMemoryEntry(entry.id);
+        actions.appendChild(pruneBtn);
+    }
+
+    item.append(kind, text, actions);
+    return item;
+}
+
 function renderTimeline() {
     const transcript = currentSession?.transcript || [];
     ELEMENTS.timelineList.innerHTML = '';
@@ -378,6 +443,8 @@ function renderState(state: BrainstormState) {
 function renderSession() {
     renderAgentRails();
     renderFraming();
+    renderMemoryPreview();
+    renderPromptMemoryPreview();
     renderTimeline();
     renderCheckpoints();
     renderOutputs();
@@ -463,6 +530,22 @@ function forkCheckpoint(checkpointId: string) {
     }, () => {
         switchTab('active');
     });
+}
+
+function clearSessionMemory() {
+    if (!currentSession) return;
+    if (!confirm(t('clearMemoryConfirm', currentLang))) return;
+    chrome.runtime.sendMessage({ action: "clearSessionMemory", sessionId: currentSession.id }, refreshActiveSession);
+}
+
+function pruneSessionMemoryEntry(entryId: string) {
+    if (!currentSession) return;
+    if (!confirm(t('pruneMemoryConfirm', currentLang))) return;
+    chrome.runtime.sendMessage({
+        action: "pruneSessionMemoryEntry",
+        sessionId: currentSession.id,
+        entryId
+    }, refreshActiveSession);
 }
 
 function openLiveMonitor() {
@@ -676,6 +759,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ELEMENTS.exportLastBtn.addEventListener('click', () => handleExport('last'));
     ELEMENTS.exportFullBtn.addEventListener('click', () => handleExport('full'));
     ELEMENTS.saveProfileBtn.addEventListener('click', saveProfile);
+    ELEMENTS.clearMemoryBtn.addEventListener('click', clearSessionMemory);
     ELEMENTS.clearLocalDataBtn.addEventListener('click', clearLocalData);
     ELEMENTS.refreshHistoryBtn.addEventListener('click', loadHistory);
     ELEMENTS.closeHistoryDetailBtn.addEventListener('click', () => { ELEMENTS.historyDetailView.style.display = 'none'; });

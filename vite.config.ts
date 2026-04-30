@@ -15,6 +15,7 @@ export default defineConfig({
                 transcript: resolve(__dirname, 'src/transcript.html'),
                 background: resolve(__dirname, 'src/background.ts'),
                 content: resolve(__dirname, 'src/content.ts'),
+                promptBlueprint: resolve(__dirname, 'src/promptBlueprint.ts'),
             },
             output: {
                 entryFileNames: '[name].js',

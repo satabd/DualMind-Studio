@@ -8,6 +8,7 @@ import {
     appendEscalation,
     appendCheckpoint,
     saveArtifacts,
+    saveMemory,
     appendModeratorDecision,
     saveFinalOutput,
     createBranchSession
@@ -17,6 +18,7 @@ import {
     BrainstormSession,
     BrainstormState,
     EscalationPayload,
+    SessionMemory,
     SessionArtifacts,
     SessionCheckpoint,
     SessionFraming,
@@ -27,6 +29,17 @@ import {
     TranscriptEntry,
     ModeratorDecision
 } from './types.js';
+import {
+    buildDiscussionBlueprint,
+    renderPromptBlueprint
+} from './promptBlueprint.js';
+import {
+    createEmptySessionMemory,
+    memoryEntriesFromCheckpoint,
+    memoryEntryFromModeratorDecision,
+    mergeSessionMemory,
+    selectPromptMemory
+} from './sessionMemory.js';
 
 const DEFAULT_STATE: BrainstormState = {
     active: false,
@@ -168,16 +181,6 @@ const ROLE_PROMPTS: Record<string, {
         chatGPTInit: (topic, cp) => `${cp}\n\nHere is the initial topic:\n---\n${topic}\n---`,
         geminiLoop: (feedback, cp) => `${cp}\n\nHere is the latest input from the collaborator:\n---\n${feedback}\n---`,
         chatGPTLoop: (proposal, cp) => `${cp}\n\nHere is the latest input from the collaborator:\n---\n${proposal}\n---`
-    },
-    DISCUSSION: {
-        geminiInit: (topic) =>
-            `[SYSTEM: DISCUSSION MODE]\nYou are Agent A in an internal working session with Agent B.\nThe human is observing only and is not your audience.\n\nTOPIC\n---\n${topic}\n---\n\nHARD RULES\n1. Address Agent B directly. Do not address the human user.\n2. No greetings, no assistant persona language, no offers, no polished essay framing.\n3. Forbidden examples: "Dear user", "Would you like me to", "I recommend you", "As an AI", "Let me know".\n4. Treat this as an internal design/analysis exchange, not a final answer.\n5. If evidence is weak or missing, mark claims as inference, ask Agent B to verify, or emit an [ESCALATION_REQUIRED] block.\n\nTURN 1 OBJECTIVE\nDo all of the following in a compact working-session style:\n- frame the problem for Agent B,\n- define the main design dimensions or constraints,\n- propose 2-4 candidate approaches or hypotheses,\n- end by asking Agent B to critique, reject, or narrow one of them.\n\nOUTPUT STYLE\nCompact, analytical, and collaborative. No user-facing wrap-up.`,
-        chatGPTInit: (topic) =>
-            `[SYSTEM: DISCUSSION MODE]\nYou are Agent A in an internal working session with Agent B.\nThe human is observing only and is not your audience.\n\nTOPIC\n---\n${topic}\n---\n\nHARD RULES\n1. Address Agent B directly. Do not address the human user.\n2. No greetings, no assistant persona language, no offers, no polished essay framing.\n3. Forbidden examples: "Dear user", "Would you like me to", "I recommend you", "As an AI", "Let me know".\n4. Treat this as an internal design/analysis exchange, not a final answer.\n5. If evidence is weak or missing, mark claims as inference, ask Agent B to verify, or emit an [ESCALATION_REQUIRED] block.\n\nTURN 1 OBJECTIVE\nDo all of the following in a compact working-session style:\n- frame the problem for Agent B,\n- define the main design dimensions or constraints,\n- propose 2-4 candidate approaches or hypotheses,\n- end by asking Agent B to critique, reject, or narrow one of them.\n\nOUTPUT STYLE\nCompact, analytical, and collaborative. No user-facing wrap-up.`,
-        geminiLoop: (feedback) =>
-            `[SYSTEM: DISCUSSION MODE] You are Agent A in an internal agent-to-agent working session. Agent B just said:\n---\n${feedback}\n---\n\nRULES:\n1. Address Agent B directly. DO NOT address the human user.\n2. No greetings, no assistant persona language, no offers, and no polished final-answer framing.\n3. Your turn must do exactly one primary move: critique, refine, verify, narrow, combine, conclude, or escalate.\n4. Do NOT close with offers, next-step suggestions for the user, or invitations.\n5. If evidence is weak or missing, mark claims as inference, request verification from Agent B, or emit an [ESCALATION_REQUIRED] block.\n6. If the thread is circling, converge instead of expanding: conclude the sub-issue, mark unsupported claims, or escalate.`,
-        chatGPTLoop: (proposal) =>
-            `[SYSTEM: DISCUSSION MODE] You are Agent B in an internal agent-to-agent working session. Agent A just said:\n---\n${proposal}\n---\n\nRULES:\n1. Address Agent A directly. DO NOT address the human user.\n2. No greetings, no assistant persona language, no offers, and no polished final-answer framing.\n3. Your turn must do exactly one primary move: critique, refine, verify, narrow, combine, conclude, or escalate.\n4. Do NOT close with offers, next-step suggestions for the user, or invitations.\n5. If evidence is weak or missing, mark claims as inference, request verification from Agent A, or emit an [ESCALATION_REQUIRED] block.\n6. If the thread is circling, converge instead of expanding: conclude the sub-issue, mark unsupported claims, or escalate.`
     }
 };
 
@@ -217,6 +220,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     if (request.action === "createBranchFromCheckpoint") {
         createBranchFromCheckpoint(request.sessionId, request.checkpointId, request.branchLabel).then(sendResponse).catch(e => sendResponse({ success: false, error: e.message }));
+        return true;
+    }
+    if (request.action === "clearSessionMemory") {
+        clearSessionMemory(request.sessionId).then(sendResponse).catch(e => sendResponse({ success: false, error: e.message }));
+        return true;
+    }
+    if (request.action === "pruneSessionMemoryEntry") {
+        pruneSessionMemoryEntry(request.sessionId, request.entryId).then(sendResponse).catch(e => sendResponse({ success: false, error: e.message }));
         return true;
     }
     if (request.action === "generateFinale") {
@@ -271,6 +282,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 transcript: [{ agent: 'User', text: topic, timestamp: Date.now(), intent: "moderate", phase: "DIVERGE" }],
                 framing,
                 artifacts,
+                memory: createEmptySessionMemory(),
                 checkpoints: [],
                 escalations: [],
                 moderatorDecisions: [],
@@ -346,12 +358,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     intent: "moderate",
                     phase: brainstormState.currentPhase
                 }).catch(() => { });
-                appendModeratorDecision(brainstormState.sessionId, {
+                const moderatorDecision: ModeratorDecision = {
                     timestamp: Date.now(),
                     feedback: request.feedback,
                     linkedCheckpointId: brainstormState.activeCheckpointId,
                     linkedTurn: brainstormState.currentRound
-                }).catch(() => { });
+                };
+                appendModeratorDecision(brainstormState.sessionId, moderatorDecision)
+                    .then(() => appendSessionMemory(brainstormState.sessionId!, [memoryEntryFromModeratorDecision(moderatorDecision)]))
+                    .catch(() => { });
             }
             if (brainstormState.awaitingHumanDecision) {
                 brainstormState.resumeContext = request.feedback;
@@ -559,6 +574,28 @@ async function persistTurn(entry: TranscriptEntry) {
     await saveArtifacts(session.id, buildArtifacts(session.transcript, session.framing)).catch(() => { });
 }
 
+async function appendSessionMemory(sessionId: string, entries: SessionMemory["entries"]) {
+    if (!entries.length) return;
+    const session = await getSession(sessionId).catch(() => undefined);
+    if (!session) return;
+    // EN: Persist memory beside the session so later turns can reuse decisions without replaying transcripts.
+    // AR: نحفظ الذاكرة بجانب الجلسة حتى تستفيد الأدوار اللاحقة من القرارات دون إعادة تمرير النص الكامل.
+    await saveMemory(sessionId, mergeSessionMemory(session.memory, entries)).catch(() => { });
+}
+
+async function clearSessionMemory(sessionId: string) {
+    await saveMemory(sessionId, createEmptySessionMemory());
+    return { success: true };
+}
+
+async function pruneSessionMemoryEntry(sessionId: string, entryId: string) {
+    const session = await getSession(sessionId);
+    if (!session) throw new Error("Session not found");
+    const entries = (session.memory?.entries || []).filter(entry => entry.id !== entryId);
+    await saveMemory(sessionId, { entries });
+    return { success: true };
+}
+
 async function maybeCreateCheckpoint(currentInput: string) {
     if (!brainstormState.sessionId) return;
     if (brainstormState.currentRound % getCheckpointInterval(brainstormState.mode) !== 0 &&
@@ -583,6 +620,7 @@ async function maybeCreateCheckpoint(currentInput: string) {
     brainstormState.activeCheckpointId = checkpoint.id;
     await appendCheckpoint(session.id, checkpoint).catch(() => { });
     await saveArtifacts(session.id, artifacts).catch(() => { });
+    await appendSessionMemory(session.id, memoryEntriesFromCheckpoint(checkpoint));
     log(`Checkpoint created: ${checkpoint.label}`, 'system');
     saveState();
 }
@@ -637,6 +675,7 @@ async function createBranchFromCheckpoint(sessionId: string, checkpointId: strin
         moderatorDecisions: [],
         finalOutputs: {},
         artifacts: checkpoint.artifactSnapshot,
+        memory: selectPromptMemory(session.memory),
         parentSessionId: session.id,
         branchLabel: branchLabel || checkpoint.label,
         branchOriginTurn: checkpoint.turn,
@@ -689,6 +728,7 @@ async function executeAgentTurn(
     isOpeningTurn: boolean,
     roleConfig: typeof ROLE_PROMPTS[string],
     framing?: SessionFraming,
+    memory?: SessionMemory,
     inputOverride?: string
 ) {
     const agent = getAgentConfig(speaker);
@@ -704,10 +744,23 @@ async function executeAgentTurn(
     }
 
     brainstormState.currentIntent = inferIntent(brainstormState.role, brainstormState.currentPhase, speaker, brainstormState.mode);
-    let prompt = isOpeningTurn
-        ? agent.initPrompt(roleConfig, basePrompt)
-        : agent.loopPrompt(roleConfig, basePrompt);
-    prompt = addPhaseGuidance(prompt, brainstormState.currentPhase, brainstormState.currentIntent, framing);
+    let prompt = brainstormState.mode === "DISCUSSION"
+        ? renderPromptBlueprint(buildDiscussionBlueprint({
+            speaker,
+            isOpeningTurn,
+            topicOrInput: basePrompt,
+            phase: brainstormState.currentPhase,
+            intent: brainstormState.currentIntent,
+            framing,
+            memory
+        }))
+        : isOpeningTurn
+            ? agent.initPrompt(roleConfig, basePrompt)
+            : agent.loopPrompt(roleConfig, basePrompt);
+
+    if (brainstormState.mode !== "DISCUSSION") {
+        prompt = addPhaseGuidance(prompt, brainstormState.currentPhase, brainstormState.currentIntent, framing);
+    }
 
     const forceConvergence = brainstormState.mode === 'DISCUSSION' &&
         brainstormState.discussionTurnSinceCheckpoint >= DISCUSSION_CHECKPOINT_TURNS;
@@ -779,17 +832,18 @@ async function runBrainstormLoop() {
 
             const session = brainstormState.sessionId ? await getSession(brainstormState.sessionId).catch(() => undefined) : undefined;
             const framing = session?.framing;
+            const promptMemory = selectPromptMemory(session?.memory);
             const firstSpeaker = brainstormState.firstSpeaker;
             const secondSpeaker: AgentSpeaker = firstSpeaker === "Gemini" ? "ChatGPT" : "Gemini";
 
-            const firstTurn = await executeAgentTurn(firstSpeaker, brainstormState.currentRound === 1, roleConfig, framing);
+            const firstTurn = await executeAgentTurn(firstSpeaker, brainstormState.currentRound === 1, roleConfig, framing, promptMemory);
             if (!brainstormState.active) break;
             if (firstTurn.escalated) continue;
 
             await wait(1500);
             while (brainstormState.isPaused && brainstormState.active) await wait(1000);
             if (!brainstormState.active) break;
-            const secondTurn = await executeAgentTurn(secondSpeaker, false, roleConfig, framing, firstTurn.output);
+            const secondTurn = await executeAgentTurn(secondSpeaker, false, roleConfig, framing, promptMemory, firstTurn.output);
             if (!brainstormState.active) break;
             if (secondTurn.escalated) continue;
 

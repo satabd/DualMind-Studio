@@ -4,6 +4,7 @@ import {
     EscalationPayload,
     SessionCheckpoint,
     SessionArtifacts,
+    SessionMemory,
     ModeratorDecision,
     FinaleType
 } from './types.js';
@@ -14,6 +15,7 @@ export type {
     EscalationPayload,
     SessionCheckpoint,
     SessionArtifacts,
+    SessionMemory,
     ModeratorDecision,
     FinaleType
 };
@@ -86,6 +88,10 @@ export async function updateSession(id: string, entry: TranscriptEntry): Promise
 
 export async function saveArtifacts(id: string, artifacts: SessionArtifacts): Promise<void> {
     await patchSession(id, { artifacts });
+}
+
+export async function saveMemory(id: string, memory: SessionMemory): Promise<void> {
+    await patchSession(id, { memory });
 }
 
 export async function appendCheckpoint(id: string, checkpoint: SessionCheckpoint): Promise<void> {

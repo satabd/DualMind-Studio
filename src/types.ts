@@ -14,6 +14,65 @@ export type TurnIntent =
     | "moderate";
 export type RepairStatus = "clean" | "repaired" | "regenerated" | "forced";
 export type FinaleType = "executive" | "product" | "roadmap" | "risks" | "decision";
+export type MemoryEntryKind = "fact" | "decision" | "question" | "rejected_option" | "risk" | "assumption";
+export type MemoryEntrySource = "checkpoint" | "moderator" | "agent" | "system";
+
+export interface MemoryEntry {
+    id: string;
+    kind: MemoryEntryKind;
+    text: string;
+    createdAt: number;
+    source: MemoryEntrySource;
+    tags?: string[];
+}
+
+export interface SessionMemory {
+    entries: MemoryEntry[];
+}
+
+export interface AgentIdentity {
+    id: string;
+    label: string;
+    role: string;
+    responsibility: string;
+}
+
+export interface AgentOperatingStyle {
+    id: string;
+    label: string;
+    principles: string[];
+}
+
+export interface PromptProtocol {
+    label: string;
+    rules: string[];
+    escalationFormat?: string;
+}
+
+export interface PromptSessionContext {
+    speaker: AgentSpeaker;
+    counterpart: "Agent A" | "Agent B";
+    phase: SessionPhase;
+    intent: TurnIntent;
+    objective?: string;
+    constraints?: string[];
+    successCriteria?: string[];
+    latestInput: string;
+}
+
+export interface PromptTurnTask {
+    move: TurnIntent;
+    instructions: string[];
+}
+
+export interface PromptBlueprint {
+    protocol: PromptProtocol;
+    identity: AgentIdentity;
+    style: AgentOperatingStyle;
+    memory?: SessionMemory;
+    context: PromptSessionContext;
+    task: PromptTurnTask;
+}
 
 export interface TranscriptEntry {
     agent: AgentName;
@@ -79,6 +138,7 @@ export interface BrainstormSession {
     framing?: SessionFraming;
     checkpoints?: SessionCheckpoint[];
     artifacts?: SessionArtifacts;
+    memory?: SessionMemory;
     moderatorDecisions?: ModeratorDecision[];
     finalOutputs?: Partial<Record<FinaleType, string>>;
     parentSessionId?: string | null;

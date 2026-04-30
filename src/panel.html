@@ -171,6 +171,28 @@
 
                     <div id="framingCard" class="framing-card"></div>
 
+                    <div id="memoryPreviewCard" class="framing-card memory-preview">
+                        <div class="timeline-head">
+                            <span data-i18n="memoryPreview">Session Memory</span>
+                            <span id="memoryPreviewCount" class="phase-badge">0</span>
+                        </div>
+                        <div id="memoryPreviewList" class="memory-preview-list">
+                            <div class="status-text" data-i18n="memoryPreviewEmpty">Memory entries will appear after checkpoints or moderator decisions.</div>
+                        </div>
+                        <div class="prompt-memory-preview">
+                            <div class="timeline-head">
+                                <span data-i18n="promptMemoryPreview">Prompt-Used Memory</span>
+                                <span id="promptMemoryCount" class="phase-badge">0</span>
+                            </div>
+                            <div id="promptMemoryList" class="memory-preview-list">
+                                <div class="status-text" data-i18n="promptMemoryEmpty">Selected prompt memory will appear here.</div>
+                            </div>
+                        </div>
+                        <div class="actions memory-preview-actions">
+                            <button id="clearMemoryBtn" class="btn secondary" type="button" data-i18n="clearMemory">Clear Memory</button>
+                        </div>
+                    </div>
+
                     <div id="checkpointCards" class="checkpoint-cards"></div>
 
                     <div class="timeline-head">

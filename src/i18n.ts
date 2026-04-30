@@ -100,7 +100,15 @@ export const translations = {
         "yourDecision": "Your Decision",
         "resolveEscalation": "Resolve Escalation",
         "decisionPlaceholder": "Type your decision here to resolve the escalation...",
-        "discussionHelp": "Agent Workshop: the models work directly with each other while you observe. The session pauses only when they need a decision or moderator guidance."
+        "discussionHelp": "Agent Workshop: the models work directly with each other while you observe. The session pauses only when they need a decision or moderator guidance.",
+        "memoryPreview": "Session Memory",
+        "memoryPreviewEmpty": "Memory entries will appear after checkpoints or moderator decisions.",
+        "promptMemoryPreview": "Prompt-Used Memory",
+        "promptMemoryEmpty": "Selected prompt memory will appear here.",
+        "clearMemory": "Clear Memory",
+        "clearMemoryConfirm": "Clear all memory entries for this session?",
+        "pruneMemoryEntry": "Prune",
+        "pruneMemoryConfirm": "Remove this memory entry from the session?"
     },
     ar: {
         "appTitle": "استوديو العقلين",
@@ -201,7 +209,15 @@ export const translations = {
         "yourDecision": "قرارك",
         "resolveEscalation": "حل التصعيد",
         "decisionPlaceholder": "اكتب قرارك هنا لحل التصعيد...",
-        "discussionHelp": "ورشة الوكلاء: يعمل النموذجان مباشرة مع بعضهما بينما تراقب أنت. تتوقف الجلسة فقط عندما يحتاجان إلى قرار أو توجيه من المشرف."
+        "discussionHelp": "ورشة الوكلاء: يعمل النموذجان مباشرة مع بعضهما بينما تراقب أنت. تتوقف الجلسة فقط عندما يحتاجان إلى قرار أو توجيه من المشرف.",
+        "memoryPreview": "ذاكرة الجلسة",
+        "memoryPreviewEmpty": "ستظهر عناصر الذاكرة بعد نقاط التحقق أو قرارات المشرف.",
+        "promptMemoryPreview": "ذاكرة المطالبة",
+        "promptMemoryEmpty": "ستظهر هنا الذاكرة المختارة للمطالبة.",
+        "clearMemory": "مسح الذاكرة",
+        "clearMemoryConfirm": "هل تريد مسح كل عناصر الذاكرة لهذه الجلسة؟",
+        "pruneMemoryEntry": "تقليم",
+        "pruneMemoryConfirm": "هل تريد حذف عنصر الذاكرة هذا من الجلسة؟"
     }
 };
 
