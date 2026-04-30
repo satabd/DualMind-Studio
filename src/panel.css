@@ -1,32 +1,40 @@
 :root {
-  --bg-color: #eef2f7;
-  --bg-accent: #f8fafc;
-  --card-bg: rgba(255, 255, 255, 0.96);
-  --text-color: #1f2937;
-  --muted-color: #64748b;
-  --border-color: rgba(148, 163, 184, 0.32);
-  --primary-color: #2f8de4;
-  --primary-hover: #1f78ca;
-  --secondary-color: #475569;
-  --danger-color: #dc2626;
-  --success-color: #15803d;
-  --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  --bg-color: #e7edf5;
+  --bg-accent: #f6f8fb;
+  --card-bg: #ffffff;
+  --surface-bg: #f8fafc;
+  --surface-strong: #f1f5f9;
+  --text-color: #111827;
+  --muted-color: #334155;
+  --border-color: #94a3b8;
+  --border-strong: #64748b;
+  --primary-color: #0f6fca;
+  --primary-hover: #0b5cab;
+  --primary-soft: #dbeafe;
+  --secondary-color: #1e293b;
+  --danger-color: #b91c1c;
+  --success-color: #166534;
+  --shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-color: #0f172a;
-    --bg-accent: #172033;
-    --card-bg: rgba(15, 23, 42, 0.94);
-    --text-color: #e2e8f0;
-    --muted-color: #94a3b8;
-    --border-color: rgba(148, 163, 184, 0.2);
-    --primary-color: #4da3ff;
-    --primary-hover: #7bbcff;
-    --secondary-color: #cbd5e1;
-    --danger-color: #f87171;
+    --bg-color: #0b1120;
+    --bg-accent: #111827;
+    --card-bg: #111827;
+    --surface-bg: #1e293b;
+    --surface-strong: #263449;
+    --text-color: #f8fafc;
+    --muted-color: #cbd5e1;
+    --border-color: #64748b;
+    --border-strong: #94a3b8;
+    --primary-color: #60a5fa;
+    --primary-hover: #93c5fd;
+    --primary-soft: #1e3a5f;
+    --secondary-color: #e2e8f0;
+    --danger-color: #fb7185;
     --success-color: #4ade80;
-    --shadow: 0 12px 36px rgba(2, 6, 23, 0.34);
+    --shadow: 0 12px 34px rgba(2, 6, 23, 0.42);
   }
 }
 
@@ -34,8 +42,6 @@ body {
   font-family: "Segoe UI", "Trebuchet MS", sans-serif;
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(47, 141, 228, 0.12), transparent 32%),
-    radial-gradient(circle at bottom right, rgba(148, 163, 184, 0.12), transparent 28%),
     linear-gradient(180deg, var(--bg-accent), var(--bg-color));
   color: var(--text-color);
   font-size: 13px;
@@ -86,16 +92,16 @@ h1 {
   padding: 10px 12px;
   border: 1px solid var(--border-color);
   border-radius: 999px;
-  background: rgba(255,255,255,0.75);
-  color: var(--muted-color);
+  background: var(--surface-bg);
+  color: var(--secondary-color);
   font-weight: 700;
   cursor: pointer;
 }
 
 .tab-btn.active {
   color: white;
-  background: linear-gradient(135deg, var(--primary-color), #56a5ef);
-  border-color: transparent;
+  background: var(--primary-color);
+  border-color: var(--primary-hover);
 }
 
 .tab-content {
@@ -126,7 +132,6 @@ h1 {
 
 .card {
   background: var(--card-bg);
-  backdrop-filter: blur(10px);
   border: 1px solid var(--border-color);
   border-radius: 18px;
   box-shadow: var(--shadow);
@@ -193,7 +198,7 @@ input, select, textarea {
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 9px 10px;
-  background: rgba(248, 250, 252, 0.95);
+  background: var(--surface-bg);
   color: var(--text-color);
   font: inherit;
 }
@@ -202,7 +207,7 @@ input:disabled,
 select:disabled,
 textarea:disabled {
   color: var(--muted-color);
-  background: rgba(226, 232, 240, 0.6);
+  background: var(--surface-strong);
 }
 
 textarea {
@@ -221,7 +226,7 @@ textarea {
 
 .mode-card {
   border: 1px solid var(--border-color);
-  background: rgba(255,255,255,0.82);
+  background: var(--surface-bg);
   border-radius: 16px;
   padding: 12px;
   cursor: pointer;
@@ -233,8 +238,8 @@ textarea {
 }
 
 .mode-card.active {
-  background: linear-gradient(135deg, rgba(47,141,228,0.14), rgba(96,165,250,0.08));
-  border-color: rgba(47,141,228,0.35);
+  background: var(--primary-soft);
+  border-color: var(--primary-color);
 }
 
 .memory-preview {
@@ -263,7 +268,7 @@ textarea {
   padding: 8px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: rgba(248, 250, 252, 0.72);
+  background: var(--surface-bg);
 }
 
 .memory-kind {
@@ -306,7 +311,7 @@ textarea {
   height: 44px;
   border-radius: 12px;
   border: 1px solid var(--border-color);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--surface-bg);
   color: var(--secondary-color);
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
@@ -315,7 +320,7 @@ textarea {
 }
 
 .flip-btn:hover {
-  border-color: rgba(47, 141, 228, 0.38);
+  border-color: var(--primary-color);
   color: var(--primary-color);
 }
 
@@ -338,7 +343,7 @@ textarea {
 .profile-pill,
 .branch-pill {
   border: 1px solid var(--border-color);
-  background: rgba(255,255,255,0.88);
+  background: var(--surface-bg);
   border-radius: 999px;
   padding: 7px 11px;
   cursor: pointer;
@@ -346,8 +351,9 @@ textarea {
 }
 
 .preset-chip.active {
-  background: rgba(47,141,228,0.12);
-  border-color: rgba(47,141,228,0.35);
+  background: var(--primary-soft);
+  border-color: var(--primary-color);
+  color: var(--secondary-color);
 }
 
 .profile-controls {
@@ -365,18 +371,18 @@ textarea {
 }
 
 .primary {
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+  background: var(--primary-color);
   color: white;
 }
 
 .secondary {
-  background: rgba(241, 245, 249, 0.95);
+  background: var(--surface-strong);
   color: var(--text-color);
   border: 1px solid var(--border-color);
 }
 
 .danger {
-  background: linear-gradient(135deg, var(--danger-color), #ea580c);
+  background: var(--danger-color);
   color: white;
 }
 
@@ -403,11 +409,12 @@ textarea {
 }
 
 .idle {
-  background: rgba(148, 163, 184, 0.16);
+  background: var(--surface-strong);
+  color: var(--secondary-color);
 }
 
 .running {
-  background: rgba(47, 141, 228, 0.16);
+  background: var(--primary-soft);
   color: var(--primary-color);
 }
 
@@ -425,7 +432,7 @@ textarea {
 .output-block {
   border: 1px solid var(--border-color);
   border-radius: 16px;
-  background: rgba(255,255,255,0.9);
+  background: var(--surface-bg);
   padding: 12px;
 }
 
@@ -462,15 +469,16 @@ textarea {
 
 .output-tab {
   border: 1px solid var(--border-color);
-  background: rgba(255,255,255,0.88);
+  background: var(--surface-bg);
   border-radius: 999px;
   padding: 7px 10px;
   cursor: pointer;
 }
 
 .output-tab.active {
-  background: rgba(47,141,228,0.12);
-  border-color: rgba(47,141,228,0.32);
+  background: var(--primary-soft);
+  border-color: var(--primary-color);
+  color: var(--secondary-color);
 }
 
 .output-panel {
@@ -490,6 +498,7 @@ textarea {
 
 .history-item {
   border: 1px solid var(--border-color);
+  background: var(--surface-bg);
   border-radius: 14px;
   padding: 10px;
   display: flex;
