@@ -488,6 +488,11 @@ function getCheckpointInterval(mode: "PING_PONG" | "DISCUSSION") {
 
 function getDiscussionViolation(text: string): string | null {
     const lower = text.toLowerCase();
+    if (lower.includes("protocol hierarchy") || lower.includes("core persona") || lower.includes("persona requirement") ||
+        lower.includes("wit") || lower.includes("irony heuristic") || lower.includes("multimodal spec-check") ||
+        lower.includes("nano banana") || lower.includes("veo") || lower.includes("lyria")) {
+        return "You drifted into unrelated protocol, persona, or tool-brand meta-discussion. Return to the session anchor and latest counterpart input.";
+    }
     if (lower.includes("dear user") || lower.includes("hello") || lower.includes("hi there") || lower.includes("thanks for") ||
         lower.includes("thank you for") || lower.includes("to help you") || lower.includes("for the user") ||
         lower.includes("for the human") || lower.includes("dear ") || lower.includes("the user should") ||
@@ -749,6 +754,7 @@ async function executeAgentTurn(
     roleConfig: typeof ROLE_PROMPTS[string],
     framing?: SessionFraming,
     memory?: SessionMemory,
+    rootTopic?: string,
     inputOverride?: string
 ) {
     const agent = getAgentConfig(speaker);
@@ -768,6 +774,7 @@ async function executeAgentTurn(
         ? renderPromptBlueprint(buildDiscussionBlueprint({
             speaker,
             isOpeningTurn,
+            rootTopic,
             topicOrInput: basePrompt,
             phase: brainstormState.currentPhase,
             intent: brainstormState.currentIntent,
@@ -856,14 +863,14 @@ async function runBrainstormLoop() {
             const firstSpeaker = brainstormState.firstSpeaker;
             const secondSpeaker: AgentSpeaker = firstSpeaker === "Gemini" ? "ChatGPT" : "Gemini";
 
-            const firstTurn = await executeAgentTurn(firstSpeaker, brainstormState.currentRound === 1, roleConfig, framing, promptMemory);
+            const firstTurn = await executeAgentTurn(firstSpeaker, brainstormState.currentRound === 1, roleConfig, framing, promptMemory, session?.topic);
             if (!brainstormState.active) break;
             if (firstTurn.escalated) continue;
 
             await wait(1500);
             while (brainstormState.isPaused && brainstormState.active) await wait(1000);
             if (!brainstormState.active) break;
-            const secondTurn = await executeAgentTurn(secondSpeaker, false, roleConfig, framing, promptMemory, firstTurn.output);
+            const secondTurn = await executeAgentTurn(secondSpeaker, false, roleConfig, framing, promptMemory, session?.topic, firstTurn.output);
             if (!brainstormState.active) break;
             if (secondTurn.escalated) continue;
 

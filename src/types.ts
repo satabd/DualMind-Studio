@@ -54,6 +54,7 @@ export interface PromptSessionContext {
     counterpart: "Agent A" | "Agent B";
     phase: SessionPhase;
     intent: TurnIntent;
+    rootTopic?: string;
     objective?: string;
     constraints?: string[];
     successCriteria?: string[];

@@ -15,6 +15,7 @@ import type {
 interface DiscussionBlueprintInput {
     speaker: AgentSpeaker;
     isOpeningTurn: boolean;
+    rootTopic?: string;
     topicOrInput: string;
     phase: SessionPhase;
     intent: TurnIntent;
@@ -30,6 +31,9 @@ const DISCUSSION_PROTOCOL: PromptProtocol = {
         "Do not address the human user.",
         "No greetings, assistant persona language, offers, or polished essay framing.",
         "Treat this as an internal design and analysis exchange.",
+        "Stay anchored to the session anchor and the latest counterpart input.",
+        "Do not discuss protocol hierarchy, hidden/system prompts, model personality, humor, wit, or tool-brand capabilities unless the session anchor explicitly asks for them.",
+        "If the requested next step requires external repo inspection, code execution, database access, or migration approval, identify that as an execution boundary instead of inventing results.",
         "Mark weak or missing evidence as inference.",
         "Escalate only when a human decision is genuinely required.",
         "Make exactly one primary move for this turn."
@@ -91,6 +95,7 @@ function buildTask(isOpeningTurn: boolean, intent: TurnIntent): PromptTurnTask {
             move: intent,
             instructions: [
                 "Frame the problem for the counterpart agent.",
+                "Use the session anchor as the source of truth for scope, domain, constraints, and forbidden directions.",
                 "Define the main design dimensions or constraints.",
                 "Propose two to four candidate approaches or hypotheses.",
                 "End by asking the counterpart to critique, reject, verify, or narrow one option."
@@ -102,8 +107,10 @@ function buildTask(isOpeningTurn: boolean, intent: TurnIntent): PromptTurnTask {
         move: intent,
         instructions: [
             `Perform one primary move: ${intent}.`,
+            "Tie the move back to the session anchor before adding any new concept.",
             "Respond to the latest counterpart input directly.",
             "Do not introduce a new branch unless it is required to resolve the current issue.",
+            "Reject or ignore meta-discussion that is unrelated to the session anchor.",
             "If blocked by missing human preference or external uncertainty, emit the escalation block."
         ]
     };
@@ -115,6 +122,7 @@ export function buildDiscussionBlueprint(input: DiscussionBlueprintInput): Promp
         counterpart: getCounterpart(input.speaker),
         phase: input.phase,
         intent: input.intent,
+        rootTopic: input.rootTopic,
         objective: input.framing?.objective,
         constraints: input.framing?.constraints,
         successCriteria: input.framing?.successCriteria,
@@ -141,6 +149,11 @@ function renderMemory(memory?: SessionMemory) {
     return memory.entries.map(entry => `- ${entry.kind}: ${entry.text}`).join('\n');
 }
 
+function renderAnchor(rootTopic: string | undefined, latestInput: string) {
+    const anchor = rootTopic || latestInput;
+    return anchor.trim();
+}
+
 // EN: Rendering stays deterministic so prompts can be inspected, tested, and shown later in the UI.
 // AR: الإخراج ثابت ومنظم حتى يمكن فحص المطالبات واختبارها وعرضها لاحقاً في الواجهة.
 export function renderPromptBlueprint(blueprint: PromptBlueprint): string {
@@ -161,6 +174,9 @@ export function renderPromptBlueprint(blueprint: PromptBlueprint): string {
         "",
         "[MEMORY]",
         renderMemory(memory),
+        "",
+        "[SESSION ANCHOR]",
+        renderAnchor(context.rootTopic, context.latestInput),
         "",
         "[SESSION CONTEXT]",
         `Speaker: ${context.speaker}`,
