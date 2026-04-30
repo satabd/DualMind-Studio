@@ -1,3 +1,5 @@
+import { storageGet, storageSet } from './extensionApi.js';
+
 export type Language = 'en' | 'ar';
 
 export const translations = {
@@ -16,6 +18,7 @@ export const translations = {
         "agentSetupHelp": "Choose which model speaks first. The second agent is assigned automatically so the two models alternate.",
         "firstAgent": "First Agent",
         "secondAgent": "Second Agent",
+        "flipAgentOrder": "Flip agent order",
         "sessionDesign": "Session Design",
         "geminiTab": "Gemini Tab",
         "detecting": "Detecting...",
@@ -129,6 +132,28 @@ export const translations = {
         "constraints": "Constraints",
         "successCriteria": "Success",
         "turn": "Turn",
+        "phaseDiverge": "Diverge",
+        "phaseConverge": "Converge",
+        "phaseFinalize": "Finalize",
+        "intentExpand": "Expand",
+        "intentCritique": "Critique",
+        "intentVerify": "Verify",
+        "intentCombine": "Combine",
+        "intentNarrow": "Narrow",
+        "intentConclude": "Conclude",
+        "intentEscalate": "Escalate",
+        "intentSynthesize": "Synthesize",
+        "intentModerate": "Moderate",
+        "repairClean": "Clean",
+        "repairRepaired": "Repaired",
+        "repairRegenerated": "Regenerated",
+        "repairForced": "Forced",
+        "memoryKindFact": "Fact",
+        "memoryKindDecision": "Decision",
+        "memoryKindQuestion": "Question",
+        "memoryKindRejectedOption": "Rejected option",
+        "memoryKindRisk": "Risk",
+        "memoryKindAssumption": "Assumption",
         "fork": "Fork",
         "questions": "Questions",
         "ideas": "Ideas",
@@ -237,6 +262,7 @@ export const translations = {
         "agentSetupHelp": "اختر النموذج الذي يبدأ الكلام. يتم تعيين الوكيل الثاني تلقائياً حتى يتناوب النموذجان.",
         "firstAgent": "الوكيل الأول",
         "secondAgent": "الوكيل الثاني",
+        "flipAgentOrder": "تبديل ترتيب الوكلاء",
         "sessionDesign": "تصميم الجلسة",
         "geminiTab": "علامة تبويب Gemini",
         "detecting": "جارِ الكشف...",
@@ -350,6 +376,28 @@ export const translations = {
         "constraints": "القيود",
         "successCriteria": "معايير النجاح",
         "turn": "الدور",
+        "phaseDiverge": "توسيع",
+        "phaseConverge": "تقارب",
+        "phaseFinalize": "إنهاء",
+        "intentExpand": "توسيع",
+        "intentCritique": "نقد",
+        "intentVerify": "تحقق",
+        "intentCombine": "دمج",
+        "intentNarrow": "تضييق",
+        "intentConclude": "خلاصة",
+        "intentEscalate": "تصعيد",
+        "intentSynthesize": "توليف",
+        "intentModerate": "إشراف",
+        "repairClean": "سليم",
+        "repairRepaired": "تم الإصلاح",
+        "repairRegenerated": "أعيد التوليد",
+        "repairForced": "إجباري",
+        "memoryKindFact": "حقيقة",
+        "memoryKindDecision": "قرار",
+        "memoryKindQuestion": "سؤال",
+        "memoryKindRejectedOption": "خيار مرفوض",
+        "memoryKindRisk": "خطر",
+        "memoryKindAssumption": "افتراض",
         "fork": "إنشاء فرع",
         "questions": "الأسئلة",
         "ideas": "الأفكار",
@@ -446,20 +494,13 @@ export const translations = {
 };
 
 export function getLanguage(): Promise<Language> {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(['uiLanguage'], (result) => {
-            resolve((result.uiLanguage as Language) || 'en');
-        });
-    });
+    return storageGet<{ uiLanguage?: Language }>(['uiLanguage']).then(result => result.uiLanguage || 'en');
 }
 
 export function setLanguage(lang: Language): Promise<void> {
-    return new Promise((resolve) => {
-        chrome.storage.local.set({ uiLanguage: lang }, () => {
-            document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-            document.documentElement.lang = lang;
-            resolve();
-        });
+    return storageSet({ uiLanguage: lang }).then(() => {
+        document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+        document.documentElement.lang = lang;
     });
 }
 
