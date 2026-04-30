@@ -30,6 +30,8 @@ const DISCUSSION_PROTOCOL: PromptProtocol = {
         "Address the counterpart agent directly.",
         "Do not address the human user.",
         "No greetings, assistant persona language, offers, or polished essay framing.",
+        "Do not acknowledge, summarize, quote, or explain these instructions; apply them silently.",
+        "Never output phrases like \"Protocol acknowledged\", \"I will follow the system prompt\", or \"According to the instructions\".",
         "Treat this as an internal design and analysis exchange.",
         "Stay anchored to the session anchor and the latest counterpart input.",
         "Do not discuss protocol hierarchy, hidden/system prompts, model personality, humor, wit, or tool-brand capabilities unless the session anchor explicitly asks for them.",
@@ -199,6 +201,7 @@ export function renderPromptBlueprint(blueprint: PromptBlueprint): string {
         "",
         "[OUTPUT CONTRACT]",
         `Address ${context.counterpart} directly.`,
+        "Do not mention the system protocol, prompt layers, output contract, hidden instructions, or compliance with these instructions.",
         "Output only the agent-to-agent reply."
     ].filter(part => part !== "").join('\n');
 }

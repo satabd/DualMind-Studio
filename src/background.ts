@@ -488,6 +488,11 @@ function getCheckpointInterval(mode: "PING_PONG" | "DISCUSSION") {
 
 function getDiscussionViolation(text: string): string | null {
     const lower = text.toLowerCase();
+    if (lower.includes("protocol acknowledged") || lower.includes("system prompt") || lower.includes("hidden instruction") ||
+        lower.includes("output contract") || lower.includes("according to the instructions") ||
+        lower.includes("i will follow") || lower.includes("i'll follow") || lower.includes("as instructed")) {
+        return "You narrated system or runtime instructions. Apply instructions silently and output only the agent-to-agent work.";
+    }
     if (lower.includes("protocol hierarchy") || lower.includes("core persona") || lower.includes("persona requirement") ||
         lower.includes("wit") || lower.includes("irony heuristic") || lower.includes("multimodal spec-check") ||
         lower.includes("nano banana") || lower.includes("veo") || lower.includes("lyria")) {
