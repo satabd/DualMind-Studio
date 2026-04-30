@@ -1,4 +1,4 @@
-import { applyTranslationsToDOM, getLanguage, setLanguage, t, Language } from './i18n.js';
+import { applyTranslationsToDOM, getLanguage, setLanguage, t, Language, translations } from './i18n.js';
 import { AgentSpeaker, BrainstormSession, BrainstormState, FinaleType, MemoryEntry, StudioProfile, TranscriptEntry } from './types.js';
 import { selectPromptMemory } from './sessionMemory.js';
 
@@ -21,6 +21,7 @@ const ELEMENTS = {
     modePingPongCard: document.getElementById('modePingPongCard') as HTMLButtonElement,
     modeDiscussionCard: document.getElementById('modeDiscussionCard') as HTMLButtonElement,
     presetChips: document.getElementById('presetChips') as HTMLElement,
+    roleHelpText: document.getElementById('roleHelpText') as HTMLElement,
     startBtn: document.getElementById('startBtn') as HTMLButtonElement,
     monitorLiveBtn: document.getElementById('monitorLiveBtn') as HTMLButtonElement,
     pauseBtn: document.getElementById('pauseBtn') as HTMLButtonElement,
@@ -161,6 +162,22 @@ function setMode(mode: "PING_PONG" | "DISCUSSION") {
         : t('collaborativeHelp', currentLang);
 }
 
+function renderRoleHelp() {
+    const helpKeyByRole: Record<string, keyof typeof translations.en> = {
+        CRITIC: 'roleHelpCritic',
+        EXPANDER: 'roleHelpExpander',
+        ARCHITECT: 'roleHelpArchitect',
+        DEV_ADVOCATE: 'roleHelpDevilAdvocate',
+        FIRST_PRINCIPLES: 'roleHelpFirstPrinciples',
+        INTERVIEWER: 'roleHelpInterviewer',
+        FIVE_WHYS: 'roleHelpFiveWhys',
+        HISTORIAN_FUTURIST: 'roleHelpTimeJump',
+        ELI5: 'roleHelpEli5',
+        CUSTOM: 'roleHelpCustom'
+    };
+    ELEMENTS.roleHelpText.textContent = t(helpKeyByRole[ELEMENTS.roleSelect.value] || 'roleHelpCritic', currentLang);
+}
+
 function saveProfiles() {
     chrome.storage.local.set({ studioProfiles: profiles });
 }
@@ -208,7 +225,7 @@ function populateSelect(select: HTMLSelectElement, tabs: chrome.tabs.Tab[], save
     tabs.forEach(tab => {
         const opt = document.createElement('option');
         opt.value = String(tab.id);
-        opt.textContent = (tab.title || "Untitled").slice(0, 48);
+        opt.textContent = (tab.title || t('untitledTab', currentLang)).slice(0, 48);
         select.appendChild(opt);
     });
     if (savedUIConfig?.[savedKey] && tabs.some(tab => String(tab.id) === savedUIConfig?.[savedKey])) {
@@ -241,33 +258,37 @@ function renderAgentRails() {
     const firstSpeaker = state?.firstSpeaker || session?.firstSpeaker || "Gemini";
     const lastGemini = session?.transcript.filter(entry => entry.agent === "Gemini").slice(-1)[0];
     const lastChat = session?.transcript.filter(entry => entry.agent === "ChatGPT").slice(-1)[0];
+    const statusFor = (speaker: AgentSpeaker) => state?.active
+        ? (state.lastSpeaker === speaker ? t('justSpoke', currentLang) : t('ready', currentLang))
+        : t('idle', currentLang);
+    const seatFor = (speaker: AgentSpeaker) => firstSpeaker === speaker ? t('opensRun', currentLang) : t('secondTurn', currentLang);
     ELEMENTS.geminiRail.innerHTML = `
         <strong>Gemini</strong>
-        <div class="rail-meta"><span>Seat</span><span>${firstSpeaker === "Gemini" ? "opens run" : "second turn"}</span></div>
-        <div class="rail-meta"><span>Status</span><span>${state?.active ? (state.lastSpeaker === "Gemini" ? "just spoke" : "ready") : "idle"}</span></div>
-        <div class="rail-meta"><span>Intent</span><span>${lastGemini?.intent || 'n/a'}</span></div>
-        <div class="rail-meta"><span>Repair</span><span>${lastGemini?.repairStatus || 'clean'}</span></div>
-        <div class="rail-meta"><span>Length</span><span>${lastGemini?.text.length || 0} chars</span></div>`;
+        <div class="rail-meta"><span>${t('seat', currentLang)}</span><span>${seatFor("Gemini")}</span></div>
+        <div class="rail-meta"><span>${t('status', currentLang)}</span><span>${statusFor("Gemini")}</span></div>
+        <div class="rail-meta"><span>${t('intent', currentLang)}</span><span>${lastGemini?.intent || t('notAvailable', currentLang)}</span></div>
+        <div class="rail-meta"><span>${t('repair', currentLang)}</span><span>${lastGemini?.repairStatus || t('clean', currentLang)}</span></div>
+        <div class="rail-meta"><span>${t('length', currentLang)}</span><span>${lastGemini?.text.length || 0} ${t('chars', currentLang)}</span></div>`;
     ELEMENTS.chatGptRail.innerHTML = `
         <strong>ChatGPT</strong>
-        <div class="rail-meta"><span>Seat</span><span>${firstSpeaker === "ChatGPT" ? "opens run" : "second turn"}</span></div>
-        <div class="rail-meta"><span>Status</span><span>${state?.active ? (state.lastSpeaker === "ChatGPT" ? "just spoke" : "ready") : "idle"}</span></div>
-        <div class="rail-meta"><span>Intent</span><span>${lastChat?.intent || 'n/a'}</span></div>
-        <div class="rail-meta"><span>Repair</span><span>${lastChat?.repairStatus || 'clean'}</span></div>
-        <div class="rail-meta"><span>Length</span><span>${lastChat?.text.length || 0} chars</span></div>`;
+        <div class="rail-meta"><span>${t('seat', currentLang)}</span><span>${seatFor("ChatGPT")}</span></div>
+        <div class="rail-meta"><span>${t('status', currentLang)}</span><span>${statusFor("ChatGPT")}</span></div>
+        <div class="rail-meta"><span>${t('intent', currentLang)}</span><span>${lastChat?.intent || t('notAvailable', currentLang)}</span></div>
+        <div class="rail-meta"><span>${t('repair', currentLang)}</span><span>${lastChat?.repairStatus || t('clean', currentLang)}</span></div>
+        <div class="rail-meta"><span>${t('length', currentLang)}</span><span>${lastChat?.text.length || 0} ${t('chars', currentLang)}</span></div>`;
 }
 
 function renderFraming() {
     const framing = currentSession?.framing;
     if (!framing) {
-        ELEMENTS.framingCard.innerHTML = '<strong>Goal Framing</strong><div class="status-text">Start a session to generate objective framing and success criteria.</div>';
+        ELEMENTS.framingCard.innerHTML = `<strong>${t('goalFraming', currentLang)}</strong><div class="status-text">${t('goalFramingEmpty', currentLang)}</div>`;
         return;
     }
     ELEMENTS.framingCard.innerHTML = `
-        <strong>Goal Framing</strong>
-        <div><strong>Objective:</strong> ${escapeHtml(framing.objective)}</div>
-        <div><strong>Constraints:</strong> ${framing.constraints.map(item => escapeHtml(item)).join(' | ')}</div>
-        <div><strong>Success:</strong> ${framing.successCriteria.map(item => escapeHtml(item)).join(' | ')}</div>`;
+        <strong>${t('goalFraming', currentLang)}</strong>
+        <div><strong>${t('objective', currentLang)}:</strong> ${escapeHtml(framing.objective)}</div>
+        <div><strong>${t('constraints', currentLang)}:</strong> ${framing.constraints.map(item => escapeHtml(item)).join(' | ')}</div>
+        <div><strong>${t('successCriteria', currentLang)}:</strong> ${framing.successCriteria.map(item => escapeHtml(item)).join(' | ')}</div>`;
 }
 
 function renderMemoryPreview() {
@@ -338,7 +359,7 @@ function renderTimeline() {
             <strong>${entry.agent}</strong>
             <div class="rail-meta"><span>${entry.intent || 'n/a'}</span><span>${entry.phase || 'n/a'}</span></div>
             <div>${escapeHtml(entry.text.slice(0, 220))}${entry.text.length > 220 ? '...' : ''}</div>
-            <div class="status-text">${entry.repairStatus ? `repair: ${entry.repairStatus}` : ''}</div>`;
+            <div class="status-text">${entry.repairStatus ? `${t('repair', currentLang)}: ${entry.repairStatus}` : ''}</div>`;
         ELEMENTS.timelineList.appendChild(item);
     });
 }
@@ -351,17 +372,17 @@ function renderCheckpoints() {
         card.className = 'checkpoint-card';
         card.innerHTML = `
             <strong>${checkpoint.label}</strong>
-            <div class="status-text">Turn ${checkpoint.turn} · ${checkpoint.phase}</div>
+            <div class="status-text">${t('turn', currentLang)} ${checkpoint.turn} · ${checkpoint.phase}</div>
             <div>${escapeHtml(checkpoint.summary)}</div>`;
         const actions = document.createElement('div');
         actions.className = 'actions';
         const forkBtn = document.createElement('button');
         forkBtn.className = 'btn secondary';
-        forkBtn.textContent = 'Fork';
+        forkBtn.textContent = t('fork', currentLang);
         forkBtn.onclick = () => forkCheckpoint(checkpoint.id);
         const finaleBtn = document.createElement('button');
         finaleBtn.className = 'btn secondary';
-        finaleBtn.textContent = 'Decision Memo';
+        finaleBtn.textContent = t('finaleDecision', currentLang);
         finaleBtn.onclick = () => triggerFinale('decision');
         actions.appendChild(forkBtn);
         actions.appendChild(finaleBtn);
@@ -378,29 +399,29 @@ function renderOutputs() {
 
     ELEMENTS.outputTranscript.innerHTML = transcript.slice(-10).map(entry => `
         <div class="output-block"><strong>${entry.agent}</strong><div>${escapeHtml(entry.text).replace(/\n/g, '<br/>')}</div></div>
-    `).join('') || '<div class="status-text">No transcript yet.</div>';
+    `).join('') || `<div class="status-text">${t('transcriptEmpty', currentLang)}</div>`;
 
     ELEMENTS.outputHighlights.innerHTML = artifacts
-        ? `<div class="output-block"><strong>Highlights</strong><ul>${artifacts.highlights.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
-           <div class="output-block"><strong>Questions</strong><ul>${artifacts.questions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>`
-        : '<div class="status-text">Highlights will appear as the session evolves.</div>';
+        ? `<div class="output-block"><strong>${t('highlights', currentLang)}</strong><ul>${artifacts.highlights.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
+           <div class="output-block"><strong>${t('questions', currentLang)}</strong><ul>${artifacts.questions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>`
+        : `<div class="status-text">${t('highlightsEmpty', currentLang)}</div>`;
 
     ELEMENTS.outputIdeas.innerHTML = artifacts
-        ? `<div class="output-block"><strong>Ideas</strong><ul>${artifacts.ideas.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
-           <div class="output-block"><strong>Risks</strong><ul>${artifacts.risks.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
-           <div class="output-block"><strong>Decisions</strong><ul>${artifacts.decisions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>`
-        : '<div class="status-text">Actionable ideas will appear here.</div>';
+        ? `<div class="output-block"><strong>${t('ideas', currentLang)}</strong><ul>${artifacts.ideas.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
+           <div class="output-block"><strong>${t('risks', currentLang)}</strong><ul>${artifacts.risks.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>
+           <div class="output-block"><strong>${t('decisions', currentLang)}</strong><ul>${artifacts.decisions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>`
+        : `<div class="status-text">${t('ideasEmpty', currentLang)}</div>`;
 
     ELEMENTS.outputFinales.innerHTML = Object.keys(finalOutputs).length
         ? Object.entries(finalOutputs).map(([key, value]) => `<div class="output-block"><strong>${key}</strong><div>${escapeHtml(value || "").replace(/\n/g, '<br/>')}</div></div>`).join('')
-        : '<div class="status-text">Generate one of the finale formats from the intervention dock.</div>';
+        : `<div class="status-text">${t('finalesEmpty', currentLang)}</div>`;
 }
 
 function renderBranches() {
     ELEMENTS.branchList.innerHTML = '';
     const items = (currentSession?.checkpoints || []).slice(-6).reverse();
     if (!items.length) {
-        ELEMENTS.branchList.innerHTML = '<div class="status-text">Checkpoint branches will appear here.</div>';
+        ELEMENTS.branchList.innerHTML = `<div class="status-text">${t('branchesEmpty', currentLang)}</div>`;
         return;
     }
     items.forEach(checkpoint => {
@@ -486,7 +507,7 @@ function startRun() {
         customChatGPTPrompt: ELEMENTS.chatGPTPromptInput.value.trim()
     }, (response) => {
         if (!response?.success) {
-            alert(response?.error || "Failed to start run");
+            alert(response?.error || t('failedToStartRun', currentLang));
             return;
         }
         saveUIConfig();
@@ -613,11 +634,11 @@ function loadHistory() {
             item.className = 'history-item';
             item.innerHTML = `
                 <div class="history-item-header">
-                    <span>${session.mode === "DISCUSSION" ? 'Agent Workshop' : 'Collaborative Exchange'}</span>
+                    <span>${session.mode === "DISCUSSION" ? t('discussionMode', currentLang) : t('pingPong', currentLang)}</span>
                     <span>${new Date(session.timestamp).toLocaleString()}</span>
                 </div>
                 <strong>${escapeHtml(session.topic)}</strong>
-                <div class="status-text">${session.branchLabel ? `Branch: ${escapeHtml(session.branchLabel)}` : 'Primary session'} · checkpoints: ${(session.checkpoints || []).length}</div>`;
+                <div class="status-text">${session.branchLabel ? `${t('branch', currentLang)}: ${escapeHtml(session.branchLabel)}` : t('primarySession', currentLang)} · ${t('checkpoints', currentLang)}: ${(session.checkpoints || []).length}</div>`;
             const actions = document.createElement('div');
             actions.className = 'history-item-actions';
             const viewBtn = document.createElement('button');
@@ -642,11 +663,11 @@ function loadHistory() {
 function viewHistorySession(id: string) {
     const session = currentHistorySessions.find(item => item.id === id);
     if (!session) return;
-    ELEMENTS.historyDetailTitle.textContent = `Session Details`;
+    ELEMENTS.historyDetailTitle.textContent = t('sessionDetails', currentLang);
     ELEMENTS.historyDetailContent.innerHTML = `
-        <div class="output-block"><strong>Topic</strong><div>${escapeHtml(session.topic)}</div></div>
-        <div class="output-block"><strong>Artifacts</strong><div>${escapeHtml(session.artifacts?.synthesis || 'No synthesis')}</div></div>
-        <div class="output-block"><strong>Transcript</strong><div>${session.transcript.map(entry => `<p><strong>${entry.agent}:</strong> ${escapeHtml(entry.text)}</p>`).join('')}</div></div>`;
+        <div class="output-block"><strong>${t('topic', currentLang)}</strong><div>${escapeHtml(session.topic)}</div></div>
+        <div class="output-block"><strong>${t('artifacts', currentLang)}</strong><div>${escapeHtml(session.artifacts?.synthesis || t('noSynthesis', currentLang))}</div></div>
+        <div class="output-block"><strong>${t('transcript', currentLang)}</strong><div>${session.transcript.map(entry => `<p><strong>${entry.agent}:</strong> ${escapeHtml(entry.text)}</p>`).join('')}</div></div>`;
     ELEMENTS.historyDetailView.style.display = 'flex';
 }
 
@@ -698,6 +719,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadStoredData();
     renderProfiles();
     setMode((ELEMENTS.modeSelect.value as "PING_PONG" | "DISCUSSION") || "PING_PONG");
+    renderRoleHelp();
     syncAgentOrder(savedUIConfig?.firstSpeaker as AgentSpeaker | undefined);
     ELEMENTS.customRoleInputs.style.display = ELEMENTS.roleSelect.value === "CUSTOM" ? 'flex' : 'none';
     attemptAutoSpawn();
@@ -717,6 +739,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             button.classList.add('active');
             ELEMENTS.roleSelect.value = button.dataset.role || "CRITIC";
             ELEMENTS.customRoleInputs.style.display = ELEMENTS.roleSelect.value === "CUSTOM" ? 'flex' : 'none';
+            renderRoleHelp();
             saveUIConfig();
         });
     });
@@ -769,6 +792,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     [ELEMENTS.geminiSelect, ELEMENTS.chatGPTSelect, ELEMENTS.roundsInput, ELEMENTS.geminiPromptInput, ELEMENTS.chatGPTPromptInput, ELEMENTS.topicInput, ELEMENTS.roleSelect]
         .forEach(el => el.addEventListener('change', () => {
             ELEMENTS.customRoleInputs.style.display = ELEMENTS.roleSelect.value === "CUSTOM" ? 'flex' : 'none';
+            renderRoleHelp();
             saveUIConfig();
         }));
     ELEMENTS.topicInput.addEventListener('input', saveUIConfig);
@@ -782,6 +806,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             applyTranslationsToDOM(currentLang);
             langBtn.textContent = currentLang === 'en' ? 'عربي' : 'English';
             setMode(ELEMENTS.modeSelect.value as "PING_PONG" | "DISCUSSION");
+            renderRoleHelp();
+            renderSession();
         });
     }
 });

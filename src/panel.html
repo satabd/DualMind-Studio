@@ -11,7 +11,7 @@
         <header class="studio-header">
             <div>
                 <h1 data-i18n="appTitle">DualMind Studio</h1>
-                <p class="studio-subtitle">DualMind Studio workspace for multi-agent exploration, memory-driven iteration, and synthesis.</p>
+                <p class="studio-subtitle" data-i18n="studioSubtitle">DualMind Studio workspace for multi-agent exploration, memory-driven iteration, and synthesis.</p>
             </div>
             <div class="header-controls">
                 <div id="status-badge" class="badge idle" data-i18n="idle">Idle</div>
@@ -28,35 +28,36 @@
             <section class="workspace-grid">
                 <div class="zone zone-setup card">
                     <div class="section-head">
-                        <h2>Studio Setup</h2>
-                        <span class="eyebrow">Create or resume a creative session</span>
+                        <h2 data-i18n="studioSetup">Studio Setup</h2>
+                        <span class="eyebrow" data-i18n="studioSetupEyebrow">Create or resume a creative session</span>
                     </div>
 
                     <div class="setup-stack">
                         <div class="setup-block">
-                            <div class="mini-label">Session Type</div>
+                            <div class="mini-label" data-i18n="sessionType">Session Type</div>
                             <div class="mode-cards">
                                 <button id="modePingPongCard" class="mode-card active" data-mode="PING_PONG" type="button">
-                                    <strong>Collaborative Exchange</strong>
-                                    <span>Gemini opens, ChatGPT responds, both iterate on your prompt.</span>
+                                    <strong data-i18n="pingPong">Collaborative Exchange</strong>
+                                    <span data-i18n="pingPongDescription">Gemini opens, ChatGPT responds, both iterate on your prompt.</span>
                                 </button>
                                 <button id="modeDiscussionCard" class="mode-card" data-mode="DISCUSSION" type="button">
-                                    <strong>Agent Workshop</strong>
-                                    <span>Agents talk directly to each other and only pause when they truly need you.</span>
+                                    <strong data-i18n="discussionMode">Agent Workshop</strong>
+                                    <span data-i18n="discussionDescription">Agents talk directly to each other and only pause when they truly need you.</span>
                                 </button>
                             </div>
                             <div id="modeHelpText" class="mode-help">Collaborative Exchange: Gemini opens the run and ChatGPT responds. They build on your prompt while referencing each other.</div>
                             <select id="modeSelect" class="hidden-select">
-                                <option value="PING_PONG">Collaborative Exchange</option>
-                                <option value="DISCUSSION">Agent Workshop</option>
+                                <option value="PING_PONG" data-i18n="pingPong">Collaborative Exchange</option>
+                                <option value="DISCUSSION" data-i18n="discussionMode">Agent Workshop</option>
                             </select>
                         </div>
 
                         <div class="setup-block">
-                            <div class="mini-label">Agent Setup</div>
+                            <div class="mini-label" data-i18n="agentSetup">Agent Setup</div>
+                            <div class="field-help" data-i18n="agentSetupHelp">Choose which model speaks first. The second agent is assigned automatically so the two models alternate.</div>
                             <div class="agent-order-grid">
                                 <div class="form-group">
-                                    <label for="firstAgentSelect">First Agent</label>
+                                    <label for="firstAgentSelect" data-i18n="firstAgent">First Agent</label>
                                     <select id="firstAgentSelect">
                                         <option value="Gemini">Gemini</option>
                                         <option value="ChatGPT">ChatGPT</option>
@@ -68,7 +69,7 @@
                                     </button>
                                 </div>
                                 <div class="form-group">
-                                    <label for="secondAgentSelect">Second Agent</label>
+                                    <label for="secondAgentSelect" data-i18n="secondAgent">Second Agent</label>
                                     <select id="secondAgentSelect" disabled>
                                         <option value="ChatGPT">ChatGPT</option>
                                         <option value="Gemini">Gemini</option>
@@ -78,15 +79,16 @@
                         </div>
 
                         <div class="setup-block">
-                            <div class="mini-label">Creative Direction Presets</div>
+                            <div class="mini-label" data-i18n="creativeDirectionPresets">Creative Direction Presets</div>
+                            <div class="field-help" data-i18n="creativeDirectionPresetsHelp">Quick presets choose the working relationship between the two agents. You can still override it with Collaboration Style.</div>
                             <div id="presetChips" class="preset-chips">
-                                <button class="preset-chip" data-role="EXPANDER" type="button">Expand</button>
-                                <button class="preset-chip" data-role="CRITIC" type="button">Stress Test</button>
-                                <button class="preset-chip" data-role="FIRST_PRINCIPLES" type="button">Reframe</button>
-                                <button class="preset-chip" data-role="ARCHITECT" type="button">Productize</button>
-                                <button class="preset-chip" data-role="ELI5" type="button">Simplify</button>
-                                <button class="preset-chip" data-role="HISTORIAN_FUTURIST" type="button">Invent</button>
-                                <button class="preset-chip" data-role="DEV_ADVOCATE" type="button">Critique</button>
+                                <button class="preset-chip" data-role="EXPANDER" type="button"><strong data-i18n="presetExpander">Expand</strong><span data-i18n="presetExpanderHelp">Use when you want more ideas, branches, and creative variations.</span></button>
+                                <button class="preset-chip" data-role="CRITIC" type="button"><strong data-i18n="presetCritic">Stress Test</strong><span data-i18n="presetCriticHelp">Use when you want one agent to expose flaws, risks, and weak assumptions.</span></button>
+                                <button class="preset-chip" data-role="FIRST_PRINCIPLES" type="button"><strong data-i18n="presetFirstPrinciples">Reframe</strong><span data-i18n="presetFirstPrinciplesHelp">Use when the topic needs to be rebuilt from fundamentals.</span></button>
+                                <button class="preset-chip" data-role="ARCHITECT" type="button"><strong data-i18n="presetArchitect">Productize</strong><span data-i18n="presetArchitectHelp">Use when you want a concept shaped into product, system, and implementation tradeoffs.</span></button>
+                                <button class="preset-chip" data-role="ELI5" type="button"><strong data-i18n="presetEli5">Simplify</strong><span data-i18n="presetEli5Help">Use when you need plain language without losing important nuance.</span></button>
+                                <button class="preset-chip" data-role="HISTORIAN_FUTURIST" type="button"><strong data-i18n="presetTimeJump">Invent</strong><span data-i18n="presetTimeJumpHelp">Use when you want past patterns challenged by future possibilities.</span></button>
+                                <button class="preset-chip" data-role="DEV_ADVOCATE" type="button"><strong data-i18n="presetDevilAdvocate">Critique</strong><span data-i18n="presetDevilAdvocateHelp">Use when a strong proposal needs a hard opposition pass.</span></button>
                             </div>
                         </div>
 
@@ -107,30 +109,31 @@
                                 <input type="number" id="roundsInput" value="3" min="1" max="20">
                             </div>
                             <div class="form-group">
-                                <label for="roleSelect">Collaboration Style</label>
+                                <label for="roleSelect" data-i18n="role">Collaboration Style</label>
                                 <select id="roleSelect">
-                                    <option value="CRITIC">Critic</option>
-                                    <option value="EXPANDER">Expander</option>
-                                    <option value="ARCHITECT">Architect</option>
-                                    <option value="DEV_ADVOCATE">Devil's Advocate</option>
-                                    <option value="FIRST_PRINCIPLES">First Principles</option>
-                                    <option value="INTERVIEWER">Interviewer</option>
-                                    <option value="FIVE_WHYS">Five Whys</option>
-                                    <option value="HISTORIAN_FUTURIST">Time Jump</option>
-                                    <option value="ELI5">ELI5</option>
-                                    <option value="CUSTOM">Custom</option>
+                                    <option value="CRITIC" data-i18n="roleCriticShort">Critic</option>
+                                    <option value="EXPANDER" data-i18n="roleExpanderShort">Expander</option>
+                                    <option value="ARCHITECT" data-i18n="roleArchitectShort">Architect</option>
+                                    <option value="DEV_ADVOCATE" data-i18n="roleDevilAdvocateShort">Devil's Advocate</option>
+                                    <option value="FIRST_PRINCIPLES" data-i18n="roleFirstPrinciplesShort">First Principles</option>
+                                    <option value="INTERVIEWER" data-i18n="roleInterviewerShort">Interviewer</option>
+                                    <option value="FIVE_WHYS" data-i18n="roleFiveWhysShort">Five Whys</option>
+                                    <option value="HISTORIAN_FUTURIST" data-i18n="roleTimeJumpShort">Time Jump</option>
+                                    <option value="ELI5" data-i18n="roleEli5Short">ELI5</option>
+                                    <option value="CUSTOM" data-i18n="roleCustomShort">Custom</option>
                                 </select>
+                                <div id="roleHelpText" class="field-help"></div>
                             </div>
                         </div>
 
                         <div class="setup-block" id="customRoleInputs" style="display:none;">
                             <div class="form-group">
-                                <label for="geminiPromptInput">Gemini System Prompt</label>
-                                <textarea id="geminiPromptInput" rows="2" placeholder="Instructions for Gemini..."></textarea>
+                                <label for="geminiPromptInput" data-i18n="geminiPrompt">Gemini System Prompt</label>
+                                <textarea id="geminiPromptInput" rows="2" data-i18n-placeholder="geminiPromptPlaceholder" placeholder="Instructions for Gemini..."></textarea>
                             </div>
                             <div class="form-group">
-                                <label for="chatGPTPromptInput">ChatGPT System Prompt</label>
-                                <textarea id="chatGPTPromptInput" rows="2" placeholder="Instructions for ChatGPT..."></textarea>
+                                <label for="chatGPTPromptInput" data-i18n="chatGptPrompt">ChatGPT System Prompt</label>
+                                <textarea id="chatGPTPromptInput" rows="2" data-i18n-placeholder="chatGptPromptPlaceholder" placeholder="Instructions for ChatGPT..."></textarea>
                             </div>
                         </div>
 
@@ -142,17 +145,18 @@
                         </div>
 
                         <div class="setup-block">
-                            <div class="mini-label">Saved Profiles</div>
+                            <div class="mini-label" data-i18n="savedProfiles">Saved Profiles</div>
+                            <div class="field-help" data-i18n="savedProfilesHelp">Save the current mode, style, agent order, prompts, and topic so you can reuse the same setup later.</div>
                             <div class="profile-controls">
-                                <input id="profileNameInput" type="text" placeholder="Profile name">
-                                <button id="saveProfileBtn" class="btn secondary" type="button">Save Profile</button>
+                                <input id="profileNameInput" type="text" data-i18n-placeholder="profileNamePlaceholder" placeholder="Profile name">
+                                <button id="saveProfileBtn" class="btn secondary" type="button" data-i18n="saveProfile">Save Profile</button>
                             </div>
                             <div id="profileList" class="profile-list"></div>
                         </div>
 
                         <div class="actions">
                             <button id="startBtn" class="btn primary" data-i18n="startRun">Start Run</button>
-                            <button id="monitorLiveBtn" class="btn secondary" style="display:none;">Monitor Live</button>
+                            <button id="monitorLiveBtn" class="btn secondary" style="display:none;" data-i18n="monitorLive">Monitor Live</button>
                             <button id="stopBtn" class="btn danger" style="display:none;" data-i18n="stop">Stop</button>
                         </div>
                     </div>
@@ -160,8 +164,8 @@
 
                 <div class="zone zone-live card">
                     <div class="section-head">
-                        <h2>Live Session</h2>
-                        <span class="eyebrow">Monitor the current run, checkpoints, and agent state</span>
+                        <h2 data-i18n="liveSession">Live Session</h2>
+                        <span class="eyebrow" data-i18n="liveSessionEyebrow">Monitor the current run, checkpoints, and agent state</span>
                     </div>
 
                     <div class="agent-rails">
@@ -196,7 +200,7 @@
                     <div id="checkpointCards" class="checkpoint-cards"></div>
 
                     <div class="timeline-head">
-                        <span>Live Timeline</span>
+                        <span data-i18n="liveTimeline">Live Timeline</span>
                         <span id="livePhaseBadge" class="phase-badge">DIVERGE</span>
                     </div>
                     <div id="timelineList" class="timeline-list"></div>
@@ -204,20 +208,20 @@
 
                 <div class="zone zone-control card">
                     <div class="section-head">
-                        <h2>Intervention Dock</h2>
-                        <span class="eyebrow">Steer without breaking flow</span>
+                        <h2 data-i18n="interventionDock">Intervention Dock</h2>
+                        <span class="eyebrow" data-i18n="interventionDockEyebrow">Steer without breaking flow</span>
                     </div>
 
                     <div class="dock-actions">
                         <button id="pauseBtn" class="btn secondary" style="display:none;" data-i18n="pause">Pause</button>
-                        <button id="forceNarrowBtn" class="btn secondary" type="button">Force Narrow</button>
-                        <button id="requestConclusionBtn" class="btn secondary" type="button">Request Conclusion</button>
-                        <button id="reviewEscalationBtn" class="btn secondary" type="button">Review Escalation</button>
+                        <button id="forceNarrowBtn" class="btn secondary" type="button" data-i18n="forceNarrow">Force Narrow</button>
+                        <button id="requestConclusionBtn" class="btn secondary" type="button" data-i18n="requestConclusion">Request Conclusion</button>
+                        <button id="reviewEscalationBtn" class="btn secondary" type="button" data-i18n="reviewEscalation">Review Escalation</button>
                     </div>
 
                     <div id="humanModeratorCard" class="dock-card" style="display:none;">
-                        <h3>Moderator Override</h3>
-                        <textarea id="humanFeedbackInput" rows="4" placeholder="Inject steering, constraints, or course-correction..."></textarea>
+                        <h3 data-i18n="moderatorOverride">Moderator Override</h3>
+                        <textarea id="humanFeedbackInput" rows="4" data-i18n-placeholder="moderatorOverridePlaceholder" placeholder="Inject steering, constraints, or course-correction..."></textarea>
                         <div class="actions">
                             <button id="resumeWithFeedbackBtn" class="btn primary" data-i18n="resumeWithFeedback">Resume with Feedback</button>
                             <button id="resumeSilentBtn" class="btn secondary" data-i18n="resumeSilently">Resume Silently</button>
@@ -226,17 +230,17 @@
 
                     <div id="escalationCard" class="dock-card" style="display:none;">
                         <h3 data-i18n="escalationTriggered">Escalation Triggered</h3>
-                        <div class="data-pair"><strong>Reason</strong><span id="escReason"></span></div>
-                        <div class="data-pair"><strong>Decision Needed</strong><span id="escDecision"></span></div>
-                        <div class="data-pair"><strong>Recommended</strong><span id="escRecommended"></span></div>
-                        <div class="data-pair"><strong>Next Step</strong><span id="escNextStep"></span></div>
-                        <div class="data-pair"><strong>Options</strong><ul id="escOptions"></ul></div>
+                        <div class="data-pair"><strong data-i18n="escalationReason">Reason</strong><span id="escReason"></span></div>
+                        <div class="data-pair"><strong data-i18n="decisionNeeded">Decision Needed</strong><span id="escDecision"></span></div>
+                        <div class="data-pair"><strong data-i18n="recommendedOption">Recommended</strong><span id="escRecommended"></span></div>
+                        <div class="data-pair"><strong data-i18n="nextStep">Next Step</strong><span id="escNextStep"></span></div>
+                        <div class="data-pair"><strong data-i18n="options">Options</strong><ul id="escOptions"></ul></div>
                         <textarea id="escFeedbackInput" rows="4" data-i18n-placeholder="decisionPlaceholder" placeholder="Type your decision here to resolve the escalation..."></textarea>
                         <button id="resolveEscalationBtn" class="btn primary" data-i18n="resolveEscalation">Resolve Escalation</button>
                     </div>
 
                     <div id="postRunActionsCard" class="dock-card" style="display:none;">
-                        <h3>Continue Session</h3>
+                        <h3 data-i18n="continueSession">Continue Session</h3>
                         <div class="two-col">
                             <div class="form-group">
                                 <label for="continueRoundsInput" data-i18n="additionalRounds">Additional Rounds</label>
@@ -251,28 +255,29 @@
                     </div>
 
                     <div class="dock-card">
-                        <h3>Finales</h3>
+                        <h3 data-i18n="finales">Finales</h3>
+                        <div class="field-help" data-i18n="finalesHelp">Generate a shaped output from the latest session state without restarting the agent loop.</div>
                         <div class="finale-grid">
-                            <button class="btn secondary finale-btn" data-finale="executive" type="button">Executive</button>
-                            <button class="btn secondary finale-btn" data-finale="product" type="button">Product</button>
-                            <button class="btn secondary finale-btn" data-finale="roadmap" type="button">Roadmap</button>
-                            <button class="btn secondary finale-btn" data-finale="risks" type="button">Risks</button>
-                            <button class="btn secondary finale-btn" data-finale="decision" type="button">Decision Memo</button>
+                            <button class="btn secondary finale-btn" data-finale="executive" type="button" data-i18n="finaleExecutive">Executive</button>
+                            <button class="btn secondary finale-btn" data-finale="product" type="button" data-i18n="finaleProduct">Product</button>
+                            <button class="btn secondary finale-btn" data-finale="roadmap" type="button" data-i18n="finaleRoadmap">Roadmap</button>
+                            <button class="btn secondary finale-btn" data-finale="risks" type="button" data-i18n="finaleRisks">Risks</button>
+                            <button class="btn secondary finale-btn" data-finale="decision" type="button" data-i18n="finaleDecision">Decision Memo</button>
                         </div>
                     </div>
                 </div>
 
                 <div class="zone zone-output card">
                     <div class="section-head">
-                        <h2>Outputs</h2>
-                        <span class="eyebrow">Transcript, artifacts, branch actions, and export</span>
+                        <h2 data-i18n="outputs">Outputs</h2>
+                        <span class="eyebrow" data-i18n="outputsHelp">Transcript, artifacts, branch actions, and export</span>
                     </div>
 
                     <div class="output-tabs">
-                        <button class="output-tab active" data-output-tab="transcript" type="button">Transcript</button>
-                        <button class="output-tab" data-output-tab="highlights" type="button">Highlights</button>
-                        <button class="output-tab" data-output-tab="ideas" type="button">Actionable Ideas</button>
-                        <button class="output-tab" data-output-tab="finales" type="button">Final Synthesis</button>
+                        <button class="output-tab active" data-output-tab="transcript" type="button" data-i18n="transcript">Transcript</button>
+                        <button class="output-tab" data-output-tab="highlights" type="button" data-i18n="highlights">Highlights</button>
+                        <button class="output-tab" data-output-tab="ideas" type="button" data-i18n="actionableIdeas">Actionable Ideas</button>
+                        <button class="output-tab" data-output-tab="finales" type="button" data-i18n="finalSynthesis">Final Synthesis</button>
                     </div>
 
                     <div id="outputTranscript" class="output-panel active"></div>
@@ -282,8 +287,8 @@
 
                     <div class="branch-section">
                         <div class="timeline-head">
-                            <span>Branch Picker</span>
-                            <span class="eyebrow">Fork from checkpoints and compare later</span>
+                            <span data-i18n="branchPicker">Branch Picker</span>
+                            <span class="eyebrow" data-i18n="branchPickerHelp">Fork from checkpoints and compare later</span>
                         </div>
                         <div id="branchList" class="branch-list"></div>
                     </div>

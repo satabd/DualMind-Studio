@@ -176,6 +176,12 @@ h2, h3 {
   color: var(--muted-color);
 }
 
+.field-help {
+  color: var(--muted-color);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .two-col {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -348,6 +354,22 @@ textarea {
   padding: 7px 11px;
   cursor: pointer;
   color: var(--text-color);
+}
+
+.preset-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  border-radius: 12px;
+  max-width: 190px;
+  text-align: start;
+}
+
+.preset-chip span {
+  color: var(--muted-color);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .preset-chip.active {
