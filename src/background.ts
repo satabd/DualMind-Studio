@@ -88,7 +88,27 @@ async function loadState() {
 }
 
 loadState();
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+
+async function configureSidePanelBehavior() {
+    try {
+        await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+    } catch (error) {
+        console.warn("Unable to set side panel action behavior.", error);
+    }
+}
+
+configureSidePanelBehavior();
+chrome.runtime.onInstalled.addListener(configureSidePanelBehavior);
+chrome.runtime.onStartup.addListener(configureSidePanelBehavior);
+
+chrome.action.onClicked.addListener(async (tab) => {
+    try {
+        if (tab.windowId === undefined) return;
+        await chrome.sidePanel.open({ windowId: tab.windowId });
+    } catch (error) {
+        console.error("Unable to open DualMind Studio side panel.", error);
+    }
+});
 
 function log(msg: string, type: 'info' | 'error' | 'system' = 'info') {
     const entry = `[${type === 'info' ? 'Info' : type === 'error' ? 'Error' : 'System'}] ${msg}`;
