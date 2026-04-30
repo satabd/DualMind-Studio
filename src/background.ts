@@ -748,6 +748,26 @@ function buildResumeContextPrompt(resumeContext: string, speaker: AgentSpeaker) 
     return `[SYSTEM: ESCALATION RESOLVED] The human observer has provided the following decision/feedback regarding your previous escalation:\n---\n${resumeContext}\n---\n\nRULES:\n1. Address ${counterpart} directly. DO NOT address the human user.\n2. Incorporate this decision to unblock the discussion.`;
 }
 
+function buildSeedAnchoredInput(sessionSeed: string | undefined, latestInput: string, isOpeningTurn: boolean) {
+    const cleanSeed = (sessionSeed || "").trim();
+    const cleanInput = latestInput.trim();
+    if (!cleanSeed || isOpeningTurn || cleanSeed === cleanInput) return latestInput;
+
+    return [
+        "[SESSION SEED PROMPT / TOPIC]",
+        "---",
+        cleanSeed,
+        "---",
+        "",
+        "[LATEST COLLABORATOR INPUT]",
+        "---",
+        latestInput,
+        "---",
+        "",
+        "Use the seed prompt as the shared context. Respond to the latest collaborator input without drifting away from the seed prompt."
+    ].join('\n');
+}
+
 async function executeAgentTurn(
     speaker: AgentSpeaker,
     isOpeningTurn: boolean,
@@ -770,6 +790,10 @@ async function executeAgentTurn(
     }
 
     brainstormState.currentIntent = inferIntent(brainstormState.role, brainstormState.currentPhase, speaker, brainstormState.mode);
+    const sessionSeed = rootTopic || brainstormState.prompt;
+    const anchoredBasePrompt = brainstormState.mode === "DISCUSSION"
+        ? basePrompt
+        : buildSeedAnchoredInput(sessionSeed, basePrompt, isOpeningTurn);
     let prompt = brainstormState.mode === "DISCUSSION"
         ? renderPromptBlueprint(buildDiscussionBlueprint({
             speaker,
@@ -782,8 +806,8 @@ async function executeAgentTurn(
             memory
         }))
         : isOpeningTurn
-            ? agent.initPrompt(roleConfig, basePrompt)
-            : agent.loopPrompt(roleConfig, basePrompt);
+            ? agent.initPrompt(roleConfig, anchoredBasePrompt)
+            : agent.loopPrompt(roleConfig, anchoredBasePrompt);
 
     if (brainstormState.mode !== "DISCUSSION") {
         prompt = addPhaseGuidance(prompt, brainstormState.currentPhase, brainstormState.currentIntent, framing);
