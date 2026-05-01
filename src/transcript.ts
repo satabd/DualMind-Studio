@@ -1,5 +1,6 @@
 import { marked } from 'marked';
 import { BrainstormSession } from './types.js';
+import { buildSessionMarkdown } from './sessionExport.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const contentEl = document.getElementById('content');
@@ -31,37 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function buildMarkdownFromSession(session: BrainstormSession): string {
-        let md = `# Live Session\n\n`;
-        md += `**Topic:** ${session.topic}\n`;
-        md += `**Role:** ${session.role}\n`;
-        md += `**Mode:** ${session.mode}\n`;
-        md += `**Started:** ${new Date(session.timestamp).toLocaleString()}\n\n---\n\n`;
-
-        session.transcript.forEach(entry => {
-            md += `## ${entry.agent}\n\n${entry.text}\n\n`;
-        });
-
-        if (session.escalations && session.escalations.length > 0) {
-            md += `---\n\n# Escalations\n\n`;
-            session.escalations.forEach((item, index) => {
-                md += `## Escalation ${index + 1}\n`;
-                md += `- **Reason:** ${item.reason}\n`;
-                md += `- **Decision Needed:** ${item.decision_needed}\n`;
-                if (item.options.length > 0) {
-                    md += `- **Options:**\n`;
-                    item.options.forEach(option => {
-                        md += `  - ${option}\n`;
-                    });
-                }
-                md += `- **Recommended:** ${item.recommended_option}\n`;
-                md += `- **Next Step:** ${item.next_step_after_decision}\n\n`;
-            });
-        }
-
-        return md;
-    }
-
     function startLiveMonitor(sessionId: string) {
         if (titleEl) titleEl.textContent = 'Live Session Monitor';
         filenameToDownload = `live-session-${sessionId}.md`;
@@ -76,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (metaEl) {
                     metaEl.textContent = `Live updates every 2 seconds. Last refresh ${new Date().toLocaleTimeString()}`;
                 }
-                renderMarkdown(buildMarkdownFromSession(session));
+                renderMarkdown(buildSessionMarkdown(session));
             });
         };
 

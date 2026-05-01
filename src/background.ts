@@ -486,34 +486,89 @@ function getCheckpointInterval(mode: "PING_PONG" | "DISCUSSION") {
     return mode === "DISCUSSION" ? 4 : 6;
 }
 
+function hasAnyPhrase(text: string, phrases: string[]) {
+    return phrases.some(phrase => text.includes(phrase));
+}
+
+function hasAnyWholeWord(text: string, words: string[]) {
+    return words.some(word => new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text));
+}
+
 function getDiscussionViolation(text: string): string | null {
     const lower = text.toLowerCase();
-    if (lower.includes("protocol acknowledged") || lower.includes("system prompt") || lower.includes("hidden instruction") ||
-        lower.includes("output contract") || lower.includes("according to the instructions") ||
-        lower.includes("i will follow") || lower.includes("i'll follow") || lower.includes("as instructed")) {
+    if (hasAnyPhrase(lower, [
+        "protocol acknowledged",
+        "system prompt",
+        "hidden instruction",
+        "output contract",
+        "according to the instructions",
+        "i will follow",
+        "i'll follow",
+        "as instructed"
+    ])) {
         return "You narrated system or runtime instructions. Apply instructions silently and output only the agent-to-agent work.";
     }
-    if (lower.includes("protocol hierarchy") || lower.includes("core persona") || lower.includes("persona requirement") ||
-        lower.includes("wit") || lower.includes("irony heuristic") || lower.includes("multimodal spec-check") ||
-        lower.includes("nano banana") || lower.includes("veo") || lower.includes("lyria")) {
+    if (hasAnyPhrase(lower, [
+        "protocol hierarchy",
+        "core persona",
+        "persona requirement",
+        "irony heuristic",
+        "multimodal spec-check",
+        "nano banana"
+    ]) || hasAnyWholeWord(lower, ["wit", "veo", "lyria"])) {
         return "You drifted into unrelated protocol, persona, or tool-brand meta-discussion. Return to the session anchor and latest counterpart input.";
     }
-    if (lower.includes("dear user") || lower.includes("hello") || lower.includes("hi there") || lower.includes("thanks for") ||
-        lower.includes("thank you for") || lower.includes("to help you") || lower.includes("for the user") ||
-        lower.includes("for the human") || lower.includes("dear ") || lower.includes("the user should") ||
-        lower.includes("the best approach for you") || lower.includes("mr. sata") || lower.includes("mr. sataa") ||
-        lower.includes("as an ai") || lower.includes("as a language model") || lower.includes("recommend you") ||
-        lower.includes("recommend to you") || lower.includes("your request") || lower.includes("would you like") ||
-        lower.includes("shall i prepare") || lower.includes("shall i") || lower.includes("let me know if you need") ||
-        lower.includes("feel free to ask") || lower.includes("i can help you") || lower.includes("let me know") ||
-        lower.includes("for you") || lower.includes("you can use this") || lower.includes("the final answer") ||
-        lower.includes("in summary for the user") || lower.includes("here's a summary for you") || lower.includes("here is a summary") ||
-        lower.includes("i recommend") || lower.includes("would you like a roadmap") || lower.includes("i can now create")) {
+    if (hasAnyPhrase(lower, [
+        "dear user",
+        "hello",
+        "hi there",
+        "thanks for",
+        "thank you for",
+        "to help you",
+        "for the user",
+        "for the human",
+        "dear ",
+        "the user should",
+        "the best approach for you",
+        "mr. sata",
+        "mr. sataa",
+        "as an ai",
+        "as a language model",
+        "recommend you",
+        "recommend to you",
+        "your request",
+        "would you like",
+        "shall i prepare",
+        "shall i",
+        "let me know if you need",
+        "feel free to ask",
+        "i can help you",
+        "let me know",
+        "for you",
+        "you can use this",
+        "the final answer",
+        "in summary for the user",
+        "here's a summary for you",
+        "here is a summary",
+        "i recommend",
+        "would you like a roadmap",
+        "i can now create"
+    ])) {
         return "You used forbidden user-facing or AI-disclaimer language. You must speak ONLY to your agent collaborator.";
     }
-    if (lower.includes("أستاذ ساطع") || lower.includes("هل ترغب") || lower.includes("يمكنني أن") || lower.includes("أقترح عليك") ||
-        lower.includes("بصفتي ذكاء") || lower.includes("يسعدني أن") || lower.includes("دعني أعرف") || lower.includes("لأجلك") ||
-        lower.includes("هل يمكنني") || lower.includes("إليك ملخص") || lower.includes("أوصي بأن")) {
+    if (hasAnyPhrase(lower, [
+        "أستاذ ساطع",
+        "هل ترغب",
+        "يمكنني أن",
+        "أقترح عليك",
+        "بصفتي ذكاء",
+        "يسعدني أن",
+        "دعني أعرف",
+        "لأجلك",
+        "هل يمكنني",
+        "إليك ملخص",
+        "أوصي بأن"
+    ])) {
         return "You used forbidden user-facing or AI-disclaimer language. You must speak ONLY to your agent collaborator.";
     }
     return null;

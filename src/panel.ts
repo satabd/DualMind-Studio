@@ -1,7 +1,8 @@
 import { applyTranslationsToDOM, getLanguage, setLanguage, t, Language, translations } from './i18n.js';
 import { AgentSpeaker, BrainstormSession, BrainstormState, FinaleType, MemoryEntry, MemoryEntryKind, RepairStatus, SessionPhase, StudioProfile, TranscriptEntry, TurnIntent } from './types.js';
 import { selectPromptMemory } from './sessionMemory.js';
-import { createTab, executeScript, isExtensionRuntime, lastRuntimeError, queryTabs, sendRuntimeMessage, storageGet, storageRemove, storageSet } from './extensionApi.js';
+import { createTab, isExtensionRuntime, queryTabs, sendRuntimeMessage, storageGet, storageRemove, storageSet } from './extensionApi.js';
+import { buildLastResponseMarkdown, buildSessionMarkdown } from './sessionExport.js';
 
 type OutputTab = "transcript" | "highlights" | "ideas" | "finales";
 
@@ -683,33 +684,33 @@ function saveProfile() {
 
 async function handleExport(type: 'last' | 'full') {
     ELEMENTS.exportStatus.textContent = t('exporting', currentLang);
-    const targetTabId = parseInt(ELEMENTS.chatGPTSelect.value) || parseInt(ELEMENTS.geminiSelect.value);
-    if (!targetTabId) {
-        ELEMENTS.exportStatus.textContent = t('noTabSelected', currentLang);
+
+    let session = currentSession;
+    if (!session && currentState?.sessionId) {
+        session = await sendRuntimeMessage<BrainstormSession | null>({ action: "getSession", id: currentState.sessionId }, null);
+        currentSession = session;
+    }
+    if (!session) {
+        ELEMENTS.exportStatus.textContent = t('noContentFound', currentLang);
         return;
     }
-    await executeScript(targetTabId, ['content.js']);
-    if (!isExtensionRuntime() || !chrome.tabs?.sendMessage) {
-        ELEMENTS.exportStatus.textContent = t('errorCommunicating', currentLang);
+
+    const markdown = type === 'last' ? buildLastResponseMarkdown(session) : buildSessionMarkdown(session);
+    if (!markdown.trim()) {
+        ELEMENTS.exportStatus.textContent = t('noContentFound', currentLang);
         return;
     }
-    chrome.tabs.sendMessage(targetTabId, { action: type === 'last' ? 'getLastResponse' : 'scrapeConversation' }, (response) => {
-        if (lastRuntimeError() || !response?.text) {
-            ELEMENTS.exportStatus.textContent = t('errorCommunicating', currentLang);
-            return;
+
+    await storageSet({
+        transcriptData: markdown,
+        transcriptMeta: {
+            title: type === 'last' ? `Studio Last Response: ${session.topic.slice(0, 32)}` : `Studio Session: ${session.topic.slice(0, 36)}`,
+            date: Date.now(),
+            filename: `studio-${type}-${session.id}-${Date.now()}.md`
         }
-        storageSet({
-            transcriptData: response.text,
-            transcriptMeta: {
-                title: currentSession ? `Studio Export: ${currentSession.topic.slice(0, 36)}` : 'Studio Export',
-                date: Date.now(),
-                filename: `studio-export-${type}-${Date.now()}.md`
-            }
-        }).then(() => {
-            createTab('transcript.html');
-            ELEMENTS.exportStatus.textContent = t('exportDone', currentLang);
-        });
     });
+    await createTab('transcript.html');
+    ELEMENTS.exportStatus.textContent = t('exportDone', currentLang);
 }
 
 async function loadHistory() {
@@ -763,9 +764,8 @@ function viewHistorySession(id: string) {
 function exportHistorySession(id: string) {
     const session = currentHistorySessions.find(item => item.id === id);
     if (!session) return;
-    const md = `# Studio Session\n\n**Topic:** ${session.topic}\n**Mode:** ${session.mode}\n**Role:** ${session.role}\n\n${session.transcript.map(entry => `## ${entry.agent}\n${entry.text}`).join('\n\n')}`;
     storageSet({
-        transcriptData: md,
+        transcriptData: buildSessionMarkdown(session),
         transcriptMeta: { title: `History: ${session.topic.slice(0, 32)}`, date: session.timestamp, filename: `session-${session.id}.md` }
     }).then(() => createTab('transcript.html'));
 }
