@@ -13,6 +13,7 @@ export default defineConfig({
             input: {
                 popup: resolve(__dirname, 'src/popup.html'),
                 panel: resolve(__dirname, 'src/panel.html'),
+                studio: resolve(__dirname, 'src/studio.html'),
                 transcript: resolve(__dirname, 'src/transcript.html'),
                 background: resolve(__dirname, 'src/background.ts'),
                 content: resolve(__dirname, 'src/content.ts'),

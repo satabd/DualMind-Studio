@@ -25,6 +25,7 @@ const ELEMENTS = {
     presetChips: document.getElementById('presetChips') as HTMLElement,
     roleHelpText: document.getElementById('roleHelpText') as HTMLElement,
     startBtn: document.getElementById('startBtn') as HTMLButtonElement,
+    openWorkshopBtn: document.getElementById('openWorkshopBtn') as HTMLButtonElement,
     monitorLiveBtn: document.getElementById('monitorLiveBtn') as HTMLButtonElement,
     pauseBtn: document.getElementById('pauseBtn') as HTMLButtonElement,
     stopBtn: document.getElementById('stopBtn') as HTMLButtonElement,
@@ -859,6 +860,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     ELEMENTS.startBtn.addEventListener('click', startRun);
+    ELEMENTS.openWorkshopBtn.addEventListener('click', () => createTab('studio.html'));
     ELEMENTS.firstAgentSelect.addEventListener('change', () => {
         syncAgentOrder(ELEMENTS.firstAgentSelect.value as AgentSpeaker);
         saveUIConfig();
