@@ -1,5 +1,5 @@
 import { applyTranslationsToDOM, getLanguage, setLanguage, t, Language, translations } from './i18n.js';
-import { AgentSpeaker, BrainstormSession, BrainstormState, FinaleType, MemoryEntry, MemoryEntryKind, RepairStatus, SessionPhase, StudioProfile, TranscriptEntry, TurnIntent } from './types.js';
+import { AgentSpeaker, BrainstormSession, BrainstormState, FinaleType, MemoryEntry, MemoryEntryKind, RepairStatus, SessionMode, SessionPhase, StudioProfile, TranscriptEntry, TurnIntent } from './types.js';
 import { selectPromptMemory } from './sessionMemory.js';
 import { createTab, isExtensionRuntime, queryTabs, sendRuntimeMessage, storageGet, storageRemove, storageSet } from './extensionApi.js';
 import { buildLastResponseMarkdown, buildSessionMarkdown } from './sessionExport.js';
@@ -92,6 +92,7 @@ let currentHistorySessions: BrainstormSession[] = [];
 let currentOutputTab: OutputTab = "transcript";
 let savedUIConfig: Record<string, string> | null = null;
 let profiles: StudioProfile[] = [];
+let refreshActiveSessionToken = 0;
 
 const idleState: BrainstormState = {
     active: false,
@@ -175,7 +176,11 @@ function updateLocalizedControls() {
 }
 
 function isGeminiUrl(tab: chrome.tabs.Tab) {
-    try { return !!tab.url && new URL(tab.url).hostname.includes("gemini.google.com") || !!tab.pendingUrl && new URL(tab.pendingUrl).hostname.includes("gemini.google.com"); } catch { return false; }
+    try {
+        const url = tab.url ? new URL(tab.url).hostname : "";
+        const pending = tab.pendingUrl ? new URL(tab.pendingUrl).hostname : "";
+        return url.includes("gemini.google.com") || pending.includes("gemini.google.com");
+    } catch { return false; }
 }
 function isChatUrl(tab: chrome.tabs.Tab) {
     try {
@@ -185,6 +190,10 @@ function isChatUrl(tab: chrome.tabs.Tab) {
     } catch { return false; }
 }
 
+function getSelectedMode(): SessionMode {
+    return ELEMENTS.modeSelect.value === "DISCUSSION" ? "DISCUSSION" : "PING_PONG";
+}
+
 function saveUIConfig() {
     storageSet({
         uiConfig: {
@@ -192,7 +201,7 @@ function saveUIConfig() {
             geminiTabId: ELEMENTS.geminiSelect.value,
             chatGPTTabId: ELEMENTS.chatGPTSelect.value,
             rounds: ELEMENTS.roundsInput.value,
-            mode: ELEMENTS.modeSelect.value,
+            mode: getSelectedMode(),
             role: ELEMENTS.roleSelect.value,
             customGeminiPrompt: ELEMENTS.geminiPromptInput.value,
             customChatGPTPrompt: ELEMENTS.chatGPTPromptInput.value,
@@ -565,14 +574,18 @@ function renderSession() {
 }
 
 async function refreshActiveSession() {
+    const refreshToken = ++refreshActiveSessionToken;
     const state = await sendRuntimeMessage<BrainstormState>({ action: "getBrainstormState" }, idleState);
+    if (refreshToken !== refreshActiveSessionToken) return;
     renderState(state);
     if (!state.sessionId) {
         currentSession = null;
         renderSession();
         return;
     }
-    currentSession = await sendRuntimeMessage<BrainstormSession | null>({ action: "getSession", id: state.sessionId }, null);
+    const session = await sendRuntimeMessage<BrainstormSession | null>({ action: "getSession", id: state.sessionId }, null);
+    if (refreshToken !== refreshActiveSessionToken) return;
+    currentSession = session;
     renderSession();
 }
 
@@ -588,7 +601,7 @@ function startRun() {
         chatGPTTabId: chatGPTId,
         firstSpeaker: ELEMENTS.firstAgentSelect.value,
         rounds: parseInt(ELEMENTS.roundsInput.value) || 3,
-        mode: ELEMENTS.modeSelect.value,
+        mode: getSelectedMode(),
         topic,
         role: ELEMENTS.roleSelect.value,
         customGeminiPrompt: ELEMENTS.geminiPromptInput.value.trim(),
@@ -669,7 +682,7 @@ function saveProfile() {
     profiles.unshift({
         id: crypto.randomUUID(),
         name,
-        mode: ELEMENTS.modeSelect.value as "PING_PONG" | "DISCUSSION",
+        mode: getSelectedMode(),
         role: ELEMENTS.roleSelect.value,
         firstSpeaker: ELEMENTS.firstAgentSelect.value as AgentSpeaker,
         rounds: parseInt(ELEMENTS.roundsInput.value) || 3,
@@ -807,7 +820,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateLocalizedControls();
     await loadStoredData();
     renderProfiles();
-    setMode((ELEMENTS.modeSelect.value as "PING_PONG" | "DISCUSSION") || "PING_PONG");
+    setMode(getSelectedMode());
     renderRoleHelp();
     syncAgentOrder(savedUIConfig?.firstSpeaker as AgentSpeaker | undefined);
     ELEMENTS.customRoleInputs.style.display = ELEMENTS.roleSelect.value === "CUSTOM" ? 'flex' : 'none';
@@ -895,7 +908,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             applyTranslationsToDOM(currentLang);
             updateLocalizedControls();
             langBtn.textContent = currentLang === 'en' ? 'عربي' : 'English';
-            setMode(ELEMENTS.modeSelect.value as "PING_PONG" | "DISCUSSION");
+            setMode(getSelectedMode());
             renderRoleHelp();
             if (currentState) renderState(currentState);
             renderSession();

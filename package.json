@@ -14,6 +14,7 @@
         "vite": "^5.1.4"
     },
     "dependencies": {
+        "dompurify": "^3.4.2",
         "marked": "^17.0.4",
         "turndown": "^7.2.2"
     }

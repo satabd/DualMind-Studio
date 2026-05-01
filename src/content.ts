@@ -10,11 +10,18 @@ const isChatGPT = (): boolean => window.location.hostname.includes('chatgpt.com'
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch (request.action) {
         case 'runPrompt':
-            handleRunPrompt(request.text).then(() => sendResponse({ status: 'done' }));
+            handleRunPrompt(request.text)
+                .then(success => sendResponse(success
+                    ? { status: 'done' }
+                    : { status: 'error', error: 'Unable to find input or send control.' }))
+                .catch(error => sendResponse({ status: 'error', error: error?.message || 'Prompt send failed.' }));
             return true;
 
         case 'waitForDone':
-            waitForIdle().then(() => sendResponse({ status: 'complete' }));
+            waitForIdle({
+                minUserTurnCount: request.minUserTurnCount,
+                minResponseTurnCount: request.minResponseTurnCount
+            }).then(() => sendResponse({ status: 'complete' }));
             return true;
 
         case 'getLastResponse':
@@ -26,6 +33,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             sendResponse({ count: getUserMessageCount() });
             break;
 
+        case 'getTurnCounts':
+            sendResponse({ user: getUserMessageCount(), response: getResponseMessageCount() });
+            break;
+
         case 'scrapeConversation':
             sendResponse({ text: mainScrape() });
             break;
@@ -35,24 +46,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // --- Action Implementations ---
 
-async function handleRunPrompt(text: string) {
+async function handleRunPrompt(text: string): Promise<boolean> {
     const inputArea = findInputArea();
-    if (!inputArea) return;
+    if (!inputArea) return false;
 
     // inputArea.focus(); 
 
     // Set text
-    if (isGemini()) {
-        const richTextEditor = document.querySelector('.ql-editor');
-        if (richTextEditor) {
-            (richTextEditor as HTMLElement).innerHTML = `<p>${text}</p>`;
-            richTextEditor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
-        } else {
-            setTextInEditable(inputArea, text);
-        }
-    } else {
-        setTextInEditable(inputArea, text);
-    }
+    setTextInEditable(inputArea, text);
 
     await new Promise(r => setTimeout(r, 500));
 
@@ -67,6 +68,8 @@ async function handleRunPrompt(text: string) {
         });
         inputArea.dispatchEvent(event);
     }
+
+    return true;
 }
 
 function setTextInEditable(el: HTMLElement, text: string) {
@@ -90,6 +93,12 @@ function getUserMessageCount(): number {
     return 0;
 }
 
+function getResponseMessageCount(): number {
+    if (isGemini()) return document.querySelectorAll('model-response, .model-response').length;
+    if (isChatGPT()) return document.querySelectorAll('[data-message-author-role="assistant"]').length;
+    return 0;
+}
+
 function findInputArea(): HTMLElement | null {
     if (isGemini()) {
         return document.querySelector('div[contenteditable="true"][role="textbox"], .ql-editor, textarea') as HTMLElement;
@@ -102,12 +111,24 @@ function findInputArea(): HTMLElement | null {
 
 function findSendButton(): HTMLElement | null {
     if (isGemini()) {
-        return document.querySelector('.send-button, button[aria-label*="Send"], button[aria-label*="bfe"]') as HTMLElement;
+        const candidates = Array.from(document.querySelectorAll<HTMLElement>('button[aria-label], button.send-button, .send-button'));
+        return candidates.find(isSendControl) || null;
     }
     if (isChatGPT()) {
         return document.querySelector('button[data-testid="send-button"]') as HTMLElement;
     }
     return null;
+}
+
+function isSendControl(el: HTMLElement): boolean {
+    if (el instanceof HTMLButtonElement && el.disabled) return false;
+    if (el.getAttribute('aria-disabled') === 'true') return false;
+    const label = (el.getAttribute('aria-label') || '').toLowerCase();
+    if (label.includes('stop') || label.includes('voice') || label.includes('mic') || label.includes('audio')) return false;
+    if (label === 'send message' || label === 'send' || label.includes('send message')) return true;
+    const iconText = (el.querySelector('mat-icon, [data-icon-name], svg')?.textContent || '').toLowerCase();
+    const iconName = (el.querySelector('[data-icon-name]')?.getAttribute('data-icon-name') || '').toLowerCase();
+    return iconText.includes('send') || iconName.includes('send');
 }
 
 function isStopButtonVisible(): boolean {
@@ -120,7 +141,7 @@ function isStopButtonVisible(): boolean {
     return false;
 }
 
-async function waitForIdle(): Promise<void> {
+async function waitForIdle(options: { minUserTurnCount?: number; minResponseTurnCount?: number } = {}): Promise<void> {
     return new Promise(resolve => {
         // 1. Give the UI time to register the click, make the network request, and show the Stop button
         setTimeout(() => {
@@ -146,6 +167,10 @@ async function waitForIdle(): Promise<void> {
             const checkInterval = setInterval(() => {
                 totalChecks++;
                 const currentText = getLastResponseText();
+                const hasNewUserTurn = options.minUserTurnCount === undefined ||
+                    getUserMessageCount() >= options.minUserTurnCount;
+                const hasNewResponseTurn = options.minResponseTurnCount === undefined ||
+                    getResponseMessageCount() >= options.minResponseTurnCount;
 
                 // Auto-scroll to bottom to let the chats stream and be generated properly
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
@@ -164,7 +189,8 @@ async function waitForIdle(): Promise<void> {
                 // Consider stable if no changes for 2.5 seconds (5 ticks)
                 // If it's completely empty, wait up to 10 seconds (20 ticks) before giving up
                 const isStable = stableCount >= 5;
-                const canResolve = currentText.length > 0 ? isStable : (isStable && totalChecks > 20);
+                const hasNewTurn = hasNewUserTurn && hasNewResponseTurn;
+                const canResolve = hasNewTurn && (currentText.length > 0 ? isStable : (isStable && totalChecks > 20));
 
                 if (canResolve) {
                     clearInterval(checkInterval);

@@ -1,4 +1,5 @@
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { BrainstormSession } from './types.js';
 import { buildSessionMarkdown } from './sessionExport.js';
 
@@ -13,22 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let filenameToDownload = 'transcript.md';
     let livePollHandle: number | null = null;
 
-    function escapeHtml(value: string) {
-        return value
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-    }
-
-    function sanitizeMarkdownInput(markdown: string) {
-        return escapeHtml(markdown);
-    }
-
     function renderMarkdown(markdown: string) {
         rawMarkdown = markdown;
         if (contentEl) {
-            const html = marked.parse(sanitizeMarkdownInput(markdown));
-            contentEl.innerHTML = html as string;
+            const html = marked.parse(markdown) as string;
+            contentEl.innerHTML = DOMPurify.sanitize(html);
         }
     }
 

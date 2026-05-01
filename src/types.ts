@@ -1,5 +1,6 @@
 export type AgentName = 'User' | 'Gemini' | 'ChatGPT' | 'System';
 export type AgentSpeaker = 'Gemini' | 'ChatGPT';
+export type AgentSeat = "Agent A" | "Agent B";
 export type SessionMode = "PING_PONG" | "DISCUSSION";
 export type SessionPhase = "DIVERGE" | "CONVERGE" | "FINALIZE";
 export type TurnIntent =
@@ -28,6 +29,7 @@ export interface MemoryEntry {
 
 export interface SessionMemory {
     entries: MemoryEntry[];
+    prunedEntryKeys?: string[];
 }
 
 export interface AgentIdentity {
@@ -51,7 +53,8 @@ export interface PromptProtocol {
 
 export interface PromptSessionContext {
     speaker: AgentSpeaker;
-    counterpart: "Agent A" | "Agent B";
+    seat: AgentSeat;
+    counterpart: AgentSeat;
     phase: SessionPhase;
     intent: TurnIntent;
     rootTopic?: string;
@@ -70,6 +73,11 @@ export interface PromptBlueprint {
     protocol: PromptProtocol;
     identity: AgentIdentity;
     style: AgentOperatingStyle;
+    roleDirective?: {
+        label: string;
+        responsibility: string;
+        instructions: string[];
+    };
     memory?: SessionMemory;
     context: PromptSessionContext;
     task: PromptTurnTask;

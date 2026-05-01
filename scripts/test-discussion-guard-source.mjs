@@ -4,10 +4,12 @@ import { resolve } from 'node:path';
 
 const backgroundSource = readFileSync(resolve('src/background.ts'), 'utf8');
 
-assert.match(backgroundSource, /function hasAnyWholeWord/, 'discussion guard must support whole-word matching');
-assert.match(backgroundSource, /hasAnyWholeWord\(lower, \["wit", "veo", "lyria"\]\)/, 'tool/persona keywords must be boundary-aware');
-assert.doesNotMatch(backgroundSource, /lower\.includes\("wit"\)/, 'guard must not flag normal words like "with" as wit');
-assert.doesNotMatch(backgroundSource, /lower\.includes\("veo"\)/, 'tool brand checks should not use broad substring matching');
-assert.doesNotMatch(backgroundSource, /lower\.includes\("lyria"\)/, 'tool brand checks should not use broad substring matching');
+assert.match(backgroundSource, /Structural discussion guard/, 'discussion guard must be structural rather than phrase-list driven');
+assert.match(backgroundSource, /\^\(hello\|hi\|dear user/, 'guard should catch greeting-shaped openings');
+assert.match(backgroundSource, /would you like\|feel free to ask\|happy to help/, 'guard should catch user-facing offer endings');
+assert.match(backgroundSource, /system prompt\|hidden instruction\|output contract/, 'guard should still catch runtime-instruction narration');
+assert.doesNotMatch(backgroundSource, /hasAnyWholeWord\(lower, \["wit", "veo", "lyria"\]\)/, 'tool/persona keyword blacklist should be removed');
+assert.doesNotMatch(backgroundSource, /"for you"/, 'guard must not flag common substrings globally');
+assert.doesNotMatch(backgroundSource, /"i recommend"/, 'guard must allow role-appropriate recommendations');
 
 console.log('discussion guard source tests passed');

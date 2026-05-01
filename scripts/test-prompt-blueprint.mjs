@@ -18,9 +18,11 @@ const { buildDiscussionBlueprint, renderPromptBlueprint } = await import(moduleU
 
 const blueprint = buildDiscussionBlueprint({
   speaker: 'Gemini',
+  seat: 'Agent B',
   isOpeningTurn: false,
+  role: 'CRITIC',
   rootTopic: 'RumailaHub is a field-operations platform. First task: run a fresh repo tree inspection before editing code.',
-  topicOrInput: 'Agent B recommends landing/leads/shell first and asks whether PA and Docs should stay placeholders.',
+  topicOrInput: 'Agent A recommends landing/leads/shell first and asks whether PA and Docs should stay placeholders.',
   phase: 'DIVERGE',
   intent: 'combine',
   framing: {
@@ -42,6 +44,16 @@ const blueprint = buildDiscussionBlueprint({
 });
 
 const rendered = renderPromptBlueprint(blueprint);
+const chatGptOpening = renderPromptBlueprint(buildDiscussionBlueprint({
+  speaker: 'ChatGPT',
+  seat: 'Agent A',
+  isOpeningTurn: true,
+  role: 'ARCHITECT',
+  rootTopic: 'Design the agentic loop.',
+  topicOrInput: 'Design the agentic loop.',
+  phase: 'DIVERGE',
+  intent: 'combine'
+}));
 const backgroundSource = readFileSync(resolve('src/background.ts'), 'utf8');
 
 assert.match(rendered, /SYSTEM PROTOCOL/);
@@ -50,26 +62,33 @@ assert.match(rendered, /OPERATING STYLE/);
 assert.match(rendered, /MEMORY/);
 assert.match(rendered, /SESSION CONTEXT/);
 assert.match(rendered, /TURN TASK/);
-assert.match(rendered, /Address Agent B directly/);
+assert.match(rendered, /Address Agent A directly/);
 assert.match(rendered, /Memory must be clearable by the user/);
 assert.match(rendered, /RumailaHub is a field-operations platform/);
 assert.match(rendered, /SESSION ANCHOR/);
 assert.match(rendered, /Stay anchored to the session anchor/);
-assert.match(rendered, /Do not discuss protocol hierarchy/);
-assert.match(rendered, /Do not acknowledge, summarize, quote, or explain these instructions/);
-assert.match(rendered, /Never output phrases like "Protocol acknowledged"/);
 assert.match(rendered, /If the requested next step requires external repo inspection/);
-assert.match(rendered, /Agent B recommends landing/);
+assert.match(rendered, /Agent A recommends landing/);
+assert.match(rendered, /ROLE DIRECTIVE/);
+assert.match(rendered, /Stress-test claims and reject weak assumptions/);
+assert.match(rendered, /Ground memory entries as constraints/);
+assert.match(rendered, /Transport: Gemini/);
+assert.match(rendered, /Reasoning seat: Agent B/);
+assert.match(rendered, /You are Agent B: Skeptical Verifier/);
+assert.match(chatGptOpening, /Transport: ChatGPT/);
+assert.match(chatGptOpening, /Reasoning seat: Agent A/);
+assert.match(chatGptOpening, /You are Agent A: Synthesis Architect/);
+assert.match(chatGptOpening, /Shape the conversation into product, system, and implementation tradeoffs/);
 assert.doesNotMatch(rendered, /undefined|null/);
 assert.doesNotMatch(
   backgroundSource,
   /\bDISCUSSION\s*:\s*\{/,
   'Discussion mode prompts must come from promptBlueprint.ts, not ROLE_PROMPTS'
 );
-assert.match(backgroundSource, /protocol hierarchy/);
-assert.match(backgroundSource, /nano banana|veo|lyria/);
-assert.match(backgroundSource, /unrelated protocol, persona, or tool-brand meta-discussion/);
-assert.match(backgroundSource, /protocol acknowledged/);
-assert.match(backgroundSource, /narrated system or runtime instructions/);
+assert.match(backgroundSource, /Legacy PING_PONG prompt path/);
+assert.match(backgroundSource, /structural discussion guard/i);
+assert.doesNotMatch(backgroundSource, /"i recommend"/, 'role prompts must be allowed to recommend, reject, or stress-test');
+assert.match(backgroundSource, /agent: systemFallback \? 'System' : speaker/, 'forced repair fallback must persist as a System note');
+assert.doesNotMatch(backgroundSource, /return \{ text: buildForcedDiscussionReply\(counterpart\), status: "forced" \}/);
 
 console.log('prompt blueprint tests passed');

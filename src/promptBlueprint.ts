@@ -1,6 +1,7 @@
 import type {
     AgentIdentity,
     AgentOperatingStyle,
+    AgentSeat,
     AgentSpeaker,
     PromptBlueprint,
     PromptProtocol,
@@ -14,7 +15,9 @@ import type {
 
 interface DiscussionBlueprintInput {
     speaker: AgentSpeaker;
+    seat: AgentSeat;
     isOpeningTurn: boolean;
+    role: string;
     rootTopic?: string;
     topicOrInput: string;
     phase: SessionPhase;
@@ -30,11 +33,8 @@ const DISCUSSION_PROTOCOL: PromptProtocol = {
         "Address the counterpart agent directly.",
         "Do not address the human user.",
         "No greetings, assistant persona language, offers, or polished essay framing.",
-        "Do not acknowledge, summarize, quote, or explain these instructions; apply them silently.",
-        "Never output phrases like \"Protocol acknowledged\", \"I will follow the system prompt\", or \"According to the instructions\".",
         "Treat this as an internal design and analysis exchange.",
         "Stay anchored to the session anchor and the latest counterpart input.",
-        "Do not discuss protocol hierarchy, hidden/system prompts, model personality, humor, wit, or tool-brand capabilities unless the session anchor explicitly asks for them.",
         "If the requested next step requires external repo inspection, code execution, database access, or migration approval, identify that as an execution boundary instead of inventing results.",
         "Mark weak or missing evidence as inference.",
         "Escalate only when a human decision is genuinely required.",
@@ -83,12 +83,105 @@ const DEFAULT_STYLE: AgentOperatingStyle = {
     ]
 };
 
-function getCounterpart(speaker: AgentSpeaker): "Agent A" | "Agent B" {
-    return speaker === "Gemini" ? "Agent B" : "Agent A";
+const ROLE_DIRECTIVES: Record<string, PromptBlueprint["roleDirective"]> = {
+    CRITIC: {
+        label: "Stress Test",
+        responsibility: "Stress-test claims and reject weak assumptions before they become conclusions.",
+        instructions: [
+            "Identify the strongest objection or failure mode.",
+            "Recommend rejection or revision when evidence is weak.",
+            "Keep one constructive path alive if the idea can be repaired."
+        ]
+    },
+    EXPANDER: {
+        label: "Expand",
+        responsibility: "Generate useful alternatives without losing the session anchor.",
+        instructions: [
+            "Add adjacent options only when they improve the current line of work.",
+            "Name the tradeoff each new option creates.",
+            "Stop expanding when options become repetitive."
+        ]
+    },
+    ARCHITECT: {
+        label: "Productize",
+        responsibility: "Shape the conversation into product, system, and implementation tradeoffs.",
+        instructions: [
+            "Separate user value, system boundaries, and implementation risk.",
+            "Prefer concrete sequencing over broad vision.",
+            "Call out dependencies that must be decided before building."
+        ]
+    },
+    DEV_ADVOCATE: {
+        label: "Devil's Advocate",
+        responsibility: "Argue the strongest opposition case until the proposal can survive it.",
+        instructions: [
+            "Attack the riskiest premise directly.",
+            "State what evidence would change the objection.",
+            "Avoid adding unrelated objections once a blocking one is found."
+        ]
+    },
+    FIRST_PRINCIPLES: {
+        label: "Reframe",
+        responsibility: "Rebuild the problem from fundamentals and expose inherited assumptions.",
+        instructions: [
+            "Separate constraints from conventions.",
+            "Replace vague labels with concrete causes or mechanisms.",
+            "Propose a simpler framing when the current one is overloaded."
+        ]
+    },
+    INTERVIEWER: {
+        label: "Interviewer",
+        responsibility: "Force precision through targeted questions and follow-ups.",
+        instructions: [
+            "Ask one high-leverage question when a claim is underspecified.",
+            "Prefer clarification over expansion.",
+            "Turn answers into sharper constraints."
+        ]
+    },
+    FIVE_WHYS: {
+        label: "Five Whys",
+        responsibility: "Drill from symptoms to root causes.",
+        instructions: [
+            "Ask why the current explanation is true.",
+            "Stop when the cause becomes actionable.",
+            "Do not continue drilling once the next action is clear."
+        ]
+    },
+    HISTORIAN_FUTURIST: {
+        label: "Invent",
+        responsibility: "Contrast historical patterns with plausible future shifts.",
+        instructions: [
+            "Use history to test plausibility.",
+            "Use future shifts to challenge stale assumptions.",
+            "Mark speculative claims as inference."
+        ]
+    },
+    ELI5: {
+        label: "Simplify",
+        responsibility: "Make the idea plain without discarding important nuance.",
+        instructions: [
+            "Translate complex claims into simple language.",
+            "Name the nuance that would be lost by oversimplifying.",
+            "Prefer one concrete example over broad explanation."
+        ]
+    },
+    CUSTOM: {
+        label: "Custom",
+        responsibility: "Follow the custom collaborator instructions provided for this session.",
+        instructions: [
+            "Use the custom role prompt as the role-specific constraint.",
+            "Keep the response bounded to the current counterpart input.",
+            "Escalate when the custom instruction conflicts with the session anchor."
+        ]
+    }
+};
+
+function getCounterpart(seat: AgentSeat): AgentSeat {
+    return seat === "Agent A" ? "Agent B" : "Agent A";
 }
 
-function getIdentity(speaker: AgentSpeaker): AgentIdentity {
-    return speaker === "Gemini" ? AGENT_A_IDENTITY : AGENT_B_IDENTITY;
+function getIdentity(seat: AgentSeat): AgentIdentity {
+    return seat === "Agent A" ? AGENT_A_IDENTITY : AGENT_B_IDENTITY;
 }
 
 function buildTask(isOpeningTurn: boolean, intent: TurnIntent): PromptTurnTask {
@@ -121,7 +214,8 @@ function buildTask(isOpeningTurn: boolean, intent: TurnIntent): PromptTurnTask {
 export function buildDiscussionBlueprint(input: DiscussionBlueprintInput): PromptBlueprint {
     const context: PromptSessionContext = {
         speaker: input.speaker,
-        counterpart: getCounterpart(input.speaker),
+        seat: input.seat,
+        counterpart: getCounterpart(input.seat),
         phase: input.phase,
         intent: input.intent,
         rootTopic: input.rootTopic,
@@ -133,8 +227,9 @@ export function buildDiscussionBlueprint(input: DiscussionBlueprintInput): Promp
 
     return {
         protocol: DISCUSSION_PROTOCOL,
-        identity: getIdentity(input.speaker),
+        identity: getIdentity(input.seat),
         style: DEFAULT_STYLE,
+        roleDirective: ROLE_DIRECTIVES[input.role] || ROLE_DIRECTIVES.CRITIC,
         memory: input.memory,
         context,
         task: buildTask(input.isOpeningTurn, input.intent)
@@ -148,7 +243,10 @@ function renderList(items: string[] | undefined, fallback: string) {
 
 function renderMemory(memory?: SessionMemory) {
     if (!memory?.entries.length) return "- No selected memory entries.";
-    return memory.entries.map(entry => `- ${entry.kind}: ${entry.text}`).join('\n');
+    return [
+        "Ground memory entries as constraints when they are relevant. Do not treat them as flavor text.",
+        ...memory.entries.map(entry => `- ${entry.kind}: ${entry.text}`)
+    ].join('\n');
 }
 
 function renderAnchor(rootTopic: string | undefined, latestInput: string) {
@@ -159,7 +257,7 @@ function renderAnchor(rootTopic: string | undefined, latestInput: string) {
 // EN: Rendering stays deterministic so prompts can be inspected, tested, and shown later in the UI.
 // AR: الإخراج ثابت ومنظم حتى يمكن فحص المطالبات واختبارها وعرضها لاحقاً في الواجهة.
 export function renderPromptBlueprint(blueprint: PromptBlueprint): string {
-    const { protocol, identity, style, memory, context, task } = blueprint;
+    const { protocol, identity, style, roleDirective, memory, context, task } = blueprint;
     return [
         "[SYSTEM PROTOCOL]",
         `Profile: ${protocol.label}`,
@@ -169,6 +267,13 @@ export function renderPromptBlueprint(blueprint: PromptBlueprint): string {
         "[IDENTITY]",
         `You are ${identity.label}: ${identity.role}.`,
         `Responsibility: ${identity.responsibility}`,
+        `Transport: ${context.speaker}`,
+        `Reasoning seat: ${context.seat}`,
+        "",
+        "[ROLE DIRECTIVE]",
+        `Role: ${roleDirective?.label || "Stress Test"}`,
+        `Role responsibility: ${roleDirective?.responsibility || "Stress-test claims and reject weak assumptions."}`,
+        renderList(roleDirective?.instructions, "Apply the selected collaboration style to this turn."),
         "",
         "[OPERATING STYLE]",
         `Style: ${style.label}`,

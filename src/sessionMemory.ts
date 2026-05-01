@@ -10,11 +10,15 @@ const DEFAULT_MEMORY_LIMIT = 24;
 // EN: Session memory stores compact conclusions, not raw transcript history.
 // AR: ذاكرة الجلسة تحفظ خلاصات مركزة، وليس سجل المحادثة الخام.
 export function createEmptySessionMemory(): SessionMemory {
-    return { entries: [] };
+    return { entries: [], prunedEntryKeys: [] };
 }
 
 function normalizeText(text: string) {
     return text.trim().replace(/\s+/g, ' ');
+}
+
+export function getMemoryEntryKey(entry: Pick<MemoryEntry, "kind" | "text">) {
+    return `${entry.kind}:${normalizeText(entry.text).toLowerCase()}`;
 }
 
 function makeMemoryEntry(
@@ -108,17 +112,20 @@ export function mergeSessionMemory(
 ): SessionMemory {
     const merged: MemoryEntry[] = [];
     const seen = new Set<string>();
+    const prunedEntryKeys = [...(memory?.prunedEntryKeys || [])];
+    const pruned = new Set(prunedEntryKeys);
 
     [...(memory?.entries || []), ...nextEntries].forEach(entry => {
         const clean = normalizeText(entry.text);
         if (!clean) return;
-        const key = `${entry.kind}:${clean.toLowerCase()}`;
+        const key = getMemoryEntryKey({ kind: entry.kind, text: clean });
+        if (pruned.has(key)) return;
         if (seen.has(key)) return;
         seen.add(key);
         merged.push({ ...entry, text: clean });
     });
 
-    return { entries: merged.slice(-limit) };
+    return { entries: merged.slice(-limit), prunedEntryKeys };
 }
 
 // EN: Prompt memory is intentionally small; the full memory remains stored locally.

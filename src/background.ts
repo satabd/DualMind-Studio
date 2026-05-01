@@ -14,6 +14,7 @@ import {
     createBranchSession
 } from './db.js';
 import {
+    AgentSeat,
     AgentSpeaker,
     BrainstormSession,
     BrainstormState,
@@ -35,6 +36,7 @@ import {
 } from './promptBlueprint.js';
 import {
     createEmptySessionMemory,
+    getMemoryEntryKey,
     memoryEntriesFromCheckpoint,
     memoryEntryFromModeratorDecision,
     mergeSessionMemory,
@@ -68,10 +70,30 @@ const DEFAULT_STATE: BrainstormState = {
 
 let brainstormState: BrainstormState = { ...DEFAULT_STATE };
 let isRestoring = true;
+let activeRunId: string | null = null;
+let saveStateTimer: ReturnType<typeof setTimeout> | null = null;
 const DISCUSSION_CHECKPOINT_TURNS = 3;
+const SAVE_STATE_DEBOUNCE_MS = 750;
 
-function saveState() {
+function writeState() {
     chrome.storage.local.set({ brainstormState });
+}
+
+function saveState(options?: { immediate?: boolean }) {
+    if (options?.immediate) {
+        if (saveStateTimer !== null) {
+            clearTimeout(saveStateTimer);
+            saveStateTimer = null;
+        }
+        writeState();
+        return;
+    }
+
+    if (saveStateTimer !== null) clearTimeout(saveStateTimer);
+    saveStateTimer = setTimeout(() => {
+        saveStateTimer = null;
+        writeState();
+    }, SAVE_STATE_DEBOUNCE_MS);
 }
 
 async function loadState() {
@@ -79,7 +101,7 @@ async function loadState() {
         chrome.storage.local.get(['brainstormState'], (result) => {
             if (result.brainstormState) {
                 brainstormState = { ...DEFAULT_STATE, ...result.brainstormState, active: false };
-                saveState();
+                saveState({ immediate: true });
             }
             isRestoring = false;
             resolve();
@@ -118,6 +140,16 @@ function log(msg: string, type: 'info' | 'error' | 'system' = 'info') {
     saveState();
 }
 
+function beginRun(): string | null {
+    if (activeRunId || brainstormState.active) return null;
+    activeRunId = crypto.randomUUID();
+    return activeRunId;
+}
+
+function finishRun(runId: string) {
+    if (activeRunId === runId) activeRunId = null;
+}
+
 function sendMessage(tabId: number, message: any): Promise<any> {
     return new Promise(resolve => {
         chrome.tabs.sendMessage(tabId, message, (resp) => {
@@ -136,6 +168,7 @@ async function ensureInjected(tabId: number) {
     } catch { }
 }
 
+// Legacy PING_PONG prompt path. DISCUSSION prompts use promptBlueprint.ts; migrate this table after the drift-control changes settle.
 const ROLE_PROMPTS: Record<string, {
     geminiInit: (topic: string, cp?: string) => string;
     chatGPTInit: (topic: string, cp?: string) => string;
@@ -229,7 +262,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 'transcriptMeta'
             ]);
             brainstormState = { ...DEFAULT_STATE };
-            saveState();
+            saveState({ immediate: true });
             sendResponse({ success: true });
         })().catch(e => sendResponse({ success: false, error: e.message }));
         return true;
@@ -257,7 +290,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "stopBrainstorm") {
         brainstormState.active = false;
         log("Stopped by user.", 'system');
-        saveState();
+        saveState({ immediate: true });
         sendResponse({ success: true });
         return true;
     }
@@ -267,6 +300,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             const { topic, rounds, role, mode, customGeminiPrompt, customChatGPTPrompt, geminiTabId, chatGPTTabId, firstSpeaker } = request;
             if (!geminiTabId || !chatGPTTabId) {
                 sendResponse({ success: false, error: "Missing tab IDs." });
+                return;
+            }
+            const runId = beginRun();
+            if (!runId) {
+                sendResponse({ success: false, error: "Run is already active." });
                 return;
             }
 
@@ -287,10 +325,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 geminiTabId,
                 chatGPTTabId,
                 currentPhase: "DIVERGE",
-                currentIntent: inferIntent(role || "CRITIC", "DIVERGE", firstSpeaker === "ChatGPT" ? "ChatGPT" : "Gemini", mode || "PING_PONG")
+                currentIntent: inferIntent(role || "CRITIC", "DIVERGE", firstSpeaker === "ChatGPT" ? "ChatGPT" : "Gemini", mode || "PING_PONG", "Agent A")
             };
             log(`Starting studio session: ${rounds} rounds...`, 'system');
-            saveState();
+            saveState({ immediate: true });
 
             await createSession({
                 id: sessionId,
@@ -312,10 +350,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 branchOriginTurn: null
             }).catch((e: any) => log(`Failed to create DB session: ${e.message}`, 'error'));
 
-            runBrainstormLoop().catch(e => {
+            runBrainstormLoop(runId).catch(e => {
                 log(`Loop fatal error: ${e.message}`, 'error');
-                brainstormState.active = false;
-                saveState();
+                if (activeRunId === runId) {
+                    brainstormState.active = false;
+                    finishRun(runId);
+                }
+                saveState({ immediate: true });
             });
 
             sendResponse({ success: true });
@@ -328,7 +369,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 sendResponse({ success: false, error: "Tab IDs missing. Start a new run instead." });
                 return;
             }
-            if (brainstormState.active) {
+            const runId = beginRun();
+            if (!runId) {
                 sendResponse({ success: false, error: "Run is already active." });
                 return;
             }
@@ -336,11 +378,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             brainstormState.rounds += additionalRounds;
             brainstormState.active = true;
             log(`Continuing run for ${additionalRounds} more rounds...`, 'system');
-            saveState();
-            runBrainstormLoop().catch(e => {
+            saveState({ immediate: true });
+            runBrainstormLoop(runId).catch(e => {
                 log(`Loop fatal error: ${e.message}`, 'error');
-                brainstormState.active = false;
-                saveState();
+                if (activeRunId === runId) {
+                    brainstormState.active = false;
+                    finishRun(runId);
+                }
+                saveState({ immediate: true });
             });
             sendResponse({ success: true });
         })();
@@ -357,7 +402,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
         brainstormState.isPaused = true;
         log("Human Intervention: Run paused. Waiting for input...", 'system');
-        saveState();
+        saveState({ immediate: true });
         sendResponse({ success: true });
         return true;
     }
@@ -400,7 +445,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             brainstormState.awaitingHumanDecision = false;
             brainstormState.lastEscalation = null;
         }
-        saveState();
+        saveState({ immediate: true });
         sendResponse({ success: true });
         return true;
     }
@@ -459,11 +504,14 @@ function getPhase(round: number, totalRounds: number): SessionPhase {
     return "DIVERGE";
 }
 
-function inferIntent(role: string, phase: SessionPhase, speaker: "Gemini" | "ChatGPT", mode: "PING_PONG" | "DISCUSSION"): TurnIntent {
+function inferIntent(role: string, phase: SessionPhase, speaker: "Gemini" | "ChatGPT", mode: "PING_PONG" | "DISCUSSION", seat?: AgentSeat): TurnIntent {
     if (mode === "DISCUSSION") {
         if (phase === "FINALIZE") return "conclude";
-        if (phase === "CONVERGE") return speaker === "Gemini" ? "narrow" : "verify";
-        return speaker === "Gemini" ? "combine" : "critique";
+        if (phase === "CONVERGE") return seat === "Agent A" ? "narrow" : "verify";
+        if (role === "EXPANDER") return "expand";
+        if (role === "FIRST_PRINCIPLES" || role === "FIVE_WHYS" || role === "INTERVIEWER") return "verify";
+        if (role === "DEV_ADVOCATE" || role === "CRITIC") return seat === "Agent A" ? "combine" : "critique";
+        return seat === "Agent A" ? "combine" : "verify";
     }
     if (phase === "FINALIZE") return "conclude";
     if (phase === "CONVERGE") return speaker === "Gemini" ? "combine" : "critique";
@@ -482,8 +530,9 @@ function inferIntent(role: string, phase: SessionPhase, speaker: "Gemini" | "Cha
     return map[role] || "expand";
 }
 
-function getCheckpointInterval(mode: "PING_PONG" | "DISCUSSION") {
-    return mode === "DISCUSSION" ? 4 : 6;
+function getCheckpointInterval(mode: "PING_PONG" | "DISCUSSION", rounds = brainstormState.rounds) {
+    const defaultInterval = mode === "DISCUSSION" ? 4 : 6;
+    return Math.max(1, Math.min(defaultInterval, Math.floor(rounds / 3) || 1));
 }
 
 function hasAnyPhrase(text: string, phrases: string[]) {
@@ -495,81 +544,19 @@ function hasAnyWholeWord(text: string, words: string[]) {
 }
 
 function getDiscussionViolation(text: string): string | null {
-    const lower = text.toLowerCase();
-    if (hasAnyPhrase(lower, [
-        "protocol acknowledged",
-        "system prompt",
-        "hidden instruction",
-        "output contract",
-        "according to the instructions",
-        "i will follow",
-        "i'll follow",
-        "as instructed"
-    ])) {
-        return "You narrated system or runtime instructions. Apply instructions silently and output only the agent-to-agent work.";
+    const lower = text.toLowerCase().trim();
+    // Structural discussion guard: catch obvious user-facing or system-narration shapes without banning normal role language.
+    if (/^(hello|hi|dear user|dear human|thanks|thank you|as an ai|as a language model)\b/i.test(lower)) {
+        return "You opened with user-facing or assistant-persona framing. Speak only as the active agent seat to the counterpart seat.";
     }
-    if (hasAnyPhrase(lower, [
-        "protocol hierarchy",
-        "core persona",
-        "persona requirement",
-        "irony heuristic",
-        "multimodal spec-check",
-        "nano banana"
-    ]) || hasAnyWholeWord(lower, ["wit", "veo", "lyria"])) {
-        return "You drifted into unrelated protocol, persona, or tool-brand meta-discussion. Return to the session anchor and latest counterpart input.";
+    if (/(would you like|feel free to ask|happy to help)\b[^.?!]*[.?!]?\s*$/i.test(lower)) {
+        return "You ended with user-facing offer language. Close with the agent-to-agent move instead.";
     }
-    if (hasAnyPhrase(lower, [
-        "dear user",
-        "hello",
-        "hi there",
-        "thanks for",
-        "thank you for",
-        "to help you",
-        "for the user",
-        "for the human",
-        "dear ",
-        "the user should",
-        "the best approach for you",
-        "mr. sata",
-        "mr. sataa",
-        "as an ai",
-        "as a language model",
-        "recommend you",
-        "recommend to you",
-        "your request",
-        "would you like",
-        "shall i prepare",
-        "shall i",
-        "let me know if you need",
-        "feel free to ask",
-        "i can help you",
-        "let me know",
-        "for you",
-        "you can use this",
-        "the final answer",
-        "in summary for the user",
-        "here's a summary for you",
-        "here is a summary",
-        "i recommend",
-        "would you like a roadmap",
-        "i can now create"
-    ])) {
-        return "You used forbidden user-facing or AI-disclaimer language. You must speak ONLY to your agent collaborator.";
+    if (/\b(system prompt|hidden instruction|output contract|according to the instructions)\b/i.test(lower)) {
+        return "You narrated runtime instructions. Apply them silently and output only the agent-to-agent work.";
     }
-    if (hasAnyPhrase(lower, [
-        "أستاذ ساطع",
-        "هل ترغب",
-        "يمكنني أن",
-        "أقترح عليك",
-        "بصفتي ذكاء",
-        "يسعدني أن",
-        "دعني أعرف",
-        "لأجلك",
-        "هل يمكنني",
-        "إليك ملخص",
-        "أوصي بأن"
-    ])) {
-        return "You used forbidden user-facing or AI-disclaimer language. You must speak ONLY to your agent collaborator.";
+    if (/^(أستاذ ساطع|مرحب|شكرا|بصفتي ذكاء)/i.test(lower) || /(هل ترغب|يسعدني أن)\s*$/i.test(lower)) {
+        return "You used user-facing or assistant-persona language. Speak only to your agent collaborator.";
     }
     return null;
 }
@@ -608,16 +595,16 @@ function isDiscussionConverged(text: string): boolean {
         lower.includes("unresolved items") || lower.includes("inference only") || lower.includes("unsupported");
 }
 
-function buildForcedDiscussionReply(counterpart: "Agent A" | "Agent B"): string {
-    return `[DISCUSSION SAFETY OVERRIDE]\n${counterpart}, no stable conclusion yet. One claim remains unsupported, one point requires verification, and further expansion is blocked. Narrow to a single disputed point or emit an [ESCALATION_REQUIRED] block.`;
+function buildForcedDiscussionSystemNote(speaker: AgentSpeaker, counterpart: AgentSeat): string {
+    return `[DISCUSSION SAFETY OVERRIDE]\n${speaker}'s prior output could not be repaired into a valid agent-to-agent turn. Treat this as an orchestrator note, not as a claim from ${counterpart}. The next move should narrow to one disputed point or escalate if human input is required.`;
 }
 
 async function sanitizeDiscussionOutput(
     tabId: number,
     speaker: "Gemini" | "ChatGPT",
-    counterpart: "Agent A" | "Agent B",
+    counterpart: AgentSeat,
     text: string
-): Promise<{ text: string; status: RepairStatus }> {
+): Promise<{ text: string; status: RepairStatus; systemFallback?: boolean }> {
     const violation = getDiscussionViolation(text);
     if (!violation) return { text, status: "clean" };
 
@@ -636,7 +623,7 @@ async function sanitizeDiscussionOutput(
     }
 
     log(`[RULE VIOLATION] ${speaker}: Repair and regenerate failed. Forcing discussion-safe fallback.`, 'error');
-    return { text: buildForcedDiscussionReply(counterpart), status: "forced" };
+    return { text: buildForcedDiscussionSystemNote(speaker, counterpart), status: "forced", systemFallback: true };
 }
 
 function addPhaseGuidance(prompt: string, phase: SessionPhase, intent: TurnIntent, framing?: SessionFraming) {
@@ -676,8 +663,14 @@ async function clearSessionMemory(sessionId: string) {
 async function pruneSessionMemoryEntry(sessionId: string, entryId: string) {
     const session = await getSession(sessionId);
     if (!session) throw new Error("Session not found");
-    const entries = (session.memory?.entries || []).filter(entry => entry.id !== entryId);
-    await saveMemory(sessionId, { entries });
+    const memory = session.memory || createEmptySessionMemory();
+    const removedEntries = (memory.entries || []).filter(entry => entry.id === entryId);
+    const prunedEntryKeys = [
+        ...(memory.prunedEntryKeys || []),
+        ...removedEntries.map(getMemoryEntryKey)
+    ];
+    const entries = (memory.entries || []).filter(entry => entry.id !== entryId);
+    await saveMemory(sessionId, { entries, prunedEntryKeys: [...new Set(prunedEntryKeys)] });
     return { success: true };
 }
 
@@ -784,27 +777,35 @@ function getAgentConfig(speaker: AgentSpeaker) {
         ? {
             tabId: brainstormState.geminiTabId!,
             initPrompt: (roleConfig: typeof ROLE_PROMPTS[string], input: string) => roleConfig.geminiInit(input, brainstormState.customGeminiPrompt),
-            loopPrompt: (roleConfig: typeof ROLE_PROMPTS[string], input: string) => roleConfig.geminiLoop(input, brainstormState.customGeminiPrompt),
-            counterpart: "Agent B" as const
+            loopPrompt: (roleConfig: typeof ROLE_PROMPTS[string], input: string) => roleConfig.geminiLoop(input, brainstormState.customGeminiPrompt)
         }
         : {
             tabId: brainstormState.chatGPTTabId!,
             initPrompt: (roleConfig: typeof ROLE_PROMPTS[string], input: string) => roleConfig.chatGPTInit(input, brainstormState.customChatGPTPrompt),
-            loopPrompt: (roleConfig: typeof ROLE_PROMPTS[string], input: string) => roleConfig.chatGPTLoop(input, brainstormState.customChatGPTPrompt),
-            counterpart: "Agent B" as const
+            loopPrompt: (roleConfig: typeof ROLE_PROMPTS[string], input: string) => roleConfig.chatGPTLoop(input, brainstormState.customChatGPTPrompt)
         };
 }
 
-function getDiscussionCounterpart(speaker: AgentSpeaker) {
-    return speaker === "Gemini" ? "Agent B" : "Agent A";
+function getDiscussionCounterpart(seat: AgentSeat): AgentSeat {
+    return seat === "Agent A" ? "Agent B" : "Agent A";
+}
+
+function getRoundSpeakers(round: number): [AgentSpeaker, AgentSpeaker] {
+    const preferredFirst = brainstormState.firstSpeaker;
+    const preferredSecond: AgentSpeaker = preferredFirst === "Gemini" ? "ChatGPT" : "Gemini";
+    return round % 2 === 1 ? [preferredFirst, preferredSecond] : [preferredSecond, preferredFirst];
+}
+
+function getSeatForTurn(speaker: AgentSpeaker, roundFirstSpeaker: AgentSpeaker): AgentSeat {
+    return speaker === roundFirstSpeaker ? "Agent A" : "Agent B";
 }
 
 function buildModeratorOverride(input: string, feedback: string) {
     return `Here is the latest input from your collaborator:\n---\n${input}\n---\n\n[CRITICAL OVERRIDE] THE HUMAN MODERATOR HAS INTERVENED WITH THE FOLLOWING INSTRUCTIONS:\n---\n${feedback}\n---\nAcknowledge the moderator's instructions and seamlessly incorporate them into your next response.`;
 }
 
-function buildResumeContextPrompt(resumeContext: string, speaker: AgentSpeaker) {
-    const counterpart = speaker === "Gemini" ? "Agent B" : "Agent A";
+function buildResumeContextPrompt(resumeContext: string, seat: AgentSeat) {
+    const counterpart = getDiscussionCounterpart(seat);
     return `[SYSTEM: ESCALATION RESOLVED] The human observer has provided the following decision/feedback regarding your previous escalation:\n---\n${resumeContext}\n---\n\nRULES:\n1. Address ${counterpart} directly. DO NOT address the human user.\n2. Incorporate this decision to unblock the discussion.`;
 }
 
@@ -830,6 +831,7 @@ function buildSeedAnchoredInput(sessionSeed: string | undefined, latestInput: st
 
 async function executeAgentTurn(
     speaker: AgentSpeaker,
+    seat: AgentSeat,
     isOpeningTurn: boolean,
     roleConfig: typeof ROLE_PROMPTS[string],
     framing?: SessionFraming,
@@ -844,12 +846,12 @@ async function executeAgentTurn(
         brainstormState.humanFeedback = null;
         saveState();
     } else if (brainstormState.resumeContext && brainstormState.mode === 'DISCUSSION') {
-        basePrompt = buildResumeContextPrompt(brainstormState.resumeContext, speaker);
+        basePrompt = buildResumeContextPrompt(brainstormState.resumeContext, seat);
         brainstormState.resumeContext = null;
         saveState();
     }
 
-    brainstormState.currentIntent = inferIntent(brainstormState.role, brainstormState.currentPhase, speaker, brainstormState.mode);
+    brainstormState.currentIntent = inferIntent(brainstormState.role, brainstormState.currentPhase, speaker, brainstormState.mode, seat);
     const sessionSeed = rootTopic || brainstormState.prompt;
     const anchoredBasePrompt = brainstormState.mode === "DISCUSSION"
         ? basePrompt
@@ -857,7 +859,9 @@ async function executeAgentTurn(
     let prompt = brainstormState.mode === "DISCUSSION"
         ? renderPromptBlueprint(buildDiscussionBlueprint({
             speaker,
+            seat,
             isOpeningTurn,
+            role: brainstormState.role,
             rootTopic,
             topicOrInput: basePrompt,
             phase: brainstormState.currentPhase,
@@ -876,7 +880,7 @@ async function executeAgentTurn(
     const forceConvergence = brainstormState.mode === 'DISCUSSION' &&
         brainstormState.discussionTurnSinceCheckpoint >= DISCUSSION_CHECKPOINT_TURNS;
     if (forceConvergence) {
-        prompt += buildDiscussionControlInstruction(getDiscussionCounterpart(speaker));
+        prompt += buildDiscussionControlInstruction(getDiscussionCounterpart(seat));
         log(`Convergence checkpoint reached. Forced sub-issue resolution requested for ${speaker}.`, 'system');
     }
 
@@ -885,10 +889,12 @@ async function executeAgentTurn(
     if (!output) throw new Error(`${speaker} produced no output.`);
 
     let repairStatus: RepairStatus = "clean";
+    let systemFallback = false;
     if (brainstormState.mode === 'DISCUSSION') {
-        const repaired = await sanitizeDiscussionOutput(agent.tabId, speaker, getDiscussionCounterpart(speaker), output);
+        const repaired = await sanitizeDiscussionOutput(agent.tabId, speaker, getDiscussionCounterpart(seat), output);
         output = repaired.text;
         repairStatus = repaired.status;
+        systemFallback = !!repaired.systemFallback;
         brainstormState.discussionTurnSinceCheckpoint = forceConvergence
             ? (isDiscussionConverged(output) ? 0 : DISCUSSION_CHECKPOINT_TURNS)
             : brainstormState.discussionTurnSinceCheckpoint + 1;
@@ -900,7 +906,7 @@ async function executeAgentTurn(
     saveState();
 
     await persistTurn({
-        agent: speaker,
+        agent: systemFallback ? 'System' : speaker,
         text: output,
         timestamp: Date.now(),
         intent: brainstormState.currentIntent,
@@ -923,50 +929,76 @@ async function executeAgentTurn(
         }
     }
 
-    return { output, escalated: false };
+    return { output, escalated: false, converged: brainstormState.mode === 'DISCUSSION' && isDiscussionConverged(output), systemFallback };
 }
 
-async function runBrainstormLoop() {
+async function runBrainstormLoop(runId: string) {
     const activeRole = ROLE_PROMPTS[brainstormState.role] ? brainstormState.role : "CRITIC";
     const roleConfig = ROLE_PROMPTS[activeRole];
+    let consecutiveConvergenceSignals = 0;
     log(`Loop started with role: ${activeRole}`);
 
+    const noteConvergence = (turn: { converged?: boolean; systemFallback?: boolean }) => {
+        if (brainstormState.mode !== "DISCUSSION" || turn.systemFallback) {
+            consecutiveConvergenceSignals = 0;
+            return false;
+        }
+        consecutiveConvergenceSignals = turn.converged ? consecutiveConvergenceSignals + 1 : 0;
+        if (consecutiveConvergenceSignals >= 2) {
+            brainstormState.currentPhase = "FINALIZE";
+            log("Repeated convergence detected. Ending discussion loop early.", 'system');
+            return true;
+        }
+        return false;
+    };
+
     try {
-        while (brainstormState.active && brainstormState.currentRound < brainstormState.rounds) {
+        while (brainstormState.active && activeRunId === runId && brainstormState.currentRound < brainstormState.rounds) {
             brainstormState.currentRound++;
             brainstormState.currentPhase = getPhase(brainstormState.currentRound, brainstormState.rounds);
             saveState();
             log(`Round ${brainstormState.currentRound} initiating in phase ${brainstormState.currentPhase}...`);
 
-            while (brainstormState.isPaused && brainstormState.active) await wait(1000);
-            if (!brainstormState.active) break;
+            while (brainstormState.isPaused && brainstormState.active && activeRunId === runId) await wait(1000);
+            if (!brainstormState.active || activeRunId !== runId) break;
 
             const session = brainstormState.sessionId ? await getSession(brainstormState.sessionId).catch(() => undefined) : undefined;
             const framing = session?.framing;
             const promptMemory = selectPromptMemory(session?.memory);
-            const firstSpeaker = brainstormState.firstSpeaker;
-            const secondSpeaker: AgentSpeaker = firstSpeaker === "Gemini" ? "ChatGPT" : "Gemini";
+            const [firstSpeaker, secondSpeaker] = getRoundSpeakers(brainstormState.currentRound);
+            const firstSeat = getSeatForTurn(firstSpeaker, firstSpeaker);
+            const secondSeat = getSeatForTurn(secondSpeaker, firstSpeaker);
 
-            const firstTurn = await executeAgentTurn(firstSpeaker, brainstormState.currentRound === 1, roleConfig, framing, promptMemory, session?.topic);
-            if (!brainstormState.active) break;
-            if (firstTurn.escalated) continue;
+            const firstTurn = await executeAgentTurn(firstSpeaker, firstSeat, brainstormState.currentRound === 1, roleConfig, framing, promptMemory, session?.topic);
+            if (!brainstormState.active || activeRunId !== runId) break;
+            if (firstTurn.escalated) {
+                brainstormState.currentRound--;
+                continue;
+            }
 
             await wait(1500);
-            while (brainstormState.isPaused && brainstormState.active) await wait(1000);
-            if (!brainstormState.active) break;
-            const secondTurn = await executeAgentTurn(secondSpeaker, false, roleConfig, framing, promptMemory, session?.topic, firstTurn.output);
-            if (!brainstormState.active) break;
-            if (secondTurn.escalated) continue;
+            while (brainstormState.isPaused && brainstormState.active && activeRunId === runId) await wait(1000);
+            if (!brainstormState.active || activeRunId !== runId) break;
+            const secondTurn = await executeAgentTurn(secondSpeaker, secondSeat, false, roleConfig, framing, promptMemory, session?.topic, firstTurn.output);
+            if (!brainstormState.active || activeRunId !== runId) break;
+            if (secondTurn.escalated) {
+                brainstormState.currentRound--;
+                continue;
+            }
 
             await maybeCreateCheckpoint(secondTurn.output);
+            if (noteConvergence(firstTurn) || noteConvergence(secondTurn)) break;
             await wait(1500);
         }
     } catch (err: any) {
         log(`Loop crashed: ${err.message}`, 'error');
     } finally {
-        brainstormState.active = false;
-        log("Run completed or stopped.", 'system');
-        saveState();
+        if (activeRunId === runId) {
+            brainstormState.active = false;
+            finishRun(runId);
+            log("Run completed or stopped.", 'system');
+            saveState({ immediate: true });
+        }
     }
 }
 
@@ -981,6 +1013,9 @@ async function sendPromptToTab(tabId: number, prompt: string): Promise<string> {
         log(`Failed to focus tab ${tabId}`, 'error');
     }
 
+    const countsBefore = await sendMessage(tabId, { action: "getTurnCounts" });
+    const minUserTurnCount = typeof countsBefore?.user === "number" ? countsBefore.user + 1 : undefined;
+    const minResponseTurnCount = typeof countsBefore?.response === "number" ? countsBefore.response + 1 : undefined;
     let tries = 0;
     let sent = false;
     while (tries < 3 && !sent) {
@@ -994,7 +1029,7 @@ async function sendPromptToTab(tabId: number, prompt: string): Promise<string> {
         return "";
     }
     log("Waiting for generation...", 'info');
-    await sendMessage(tabId, { action: "waitForDone" });
+    await sendMessage(tabId, { action: "waitForDone", minUserTurnCount, minResponseTurnCount });
     const resp = await sendMessage(tabId, { action: "getLastResponse" });
     return resp?.text || "";
 }

@@ -65,6 +65,16 @@ const merged = mergeSessionMemory(createEmptySessionMemory(), [
 ]);
 assert.equal(merged.entries.length, 6);
 
+const prunedMemory = mergeSessionMemory({
+  entries: merged.entries.filter(entry => entry.id !== checkpointEntries[0].id),
+  prunedEntryKeys: [`${checkpointEntries[0].kind}:${checkpointEntries[0].text.toLowerCase()}`]
+}, [checkpointEntries[0]]);
+assert.equal(
+  prunedMemory.entries.some(entry => entry.id === checkpointEntries[0].id),
+  false,
+  'pruned memory entries must not be re-added by later checkpoints with the same text'
+);
+
 const selected = selectPromptMemory(merged, 3);
 assert.equal(selected.entries.length, 3);
 assert.equal(selected.entries[0].kind, 'decision');

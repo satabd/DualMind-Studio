@@ -47,8 +47,59 @@ async function putSession(session: BrainstormSession): Promise<void> {
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
         const request = store.put(session);
-        request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+    });
+}
+
+async function mutateSession(
+    id: string,
+    mutate: (session: BrainstormSession) => BrainstormSession
+): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        let failure: unknown = null;
+        let rejected = false;
+        const rejectOnce = (error: unknown) => {
+            if (rejected) return;
+            rejected = true;
+            reject(error);
+        };
+
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.get(id);
+
+        request.onsuccess = () => {
+            const session = request.result as BrainstormSession | undefined;
+            if (!session) {
+                failure = new Error("Session not found");
+                tx.abort();
+                return;
+            }
+
+            let nextSession: BrainstormSession;
+            try {
+                nextSession = mutate(session);
+            } catch (error) {
+                failure = error;
+                tx.abort();
+                return;
+            }
+
+            const putRequest = store.put(nextSession);
+            putRequest.onerror = () => {
+                failure = putRequest.error;
+            };
+        };
+        request.onerror = () => {
+            failure = request.error;
+        };
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => rejectOnce(failure || tx.error);
+        tx.onabort = () => rejectOnce(failure || tx.error);
     });
 }
 
@@ -72,18 +123,14 @@ export async function getSession(id: string): Promise<BrainstormSession | undefi
 }
 
 export async function patchSession(id: string, patch: Partial<BrainstormSession>): Promise<void> {
-    const session = await getSession(id);
-    if (!session) throw new Error("Session not found");
-    await putSession({ ...session, ...patch });
+    await mutateSession(id, session => ({ ...session, ...patch }));
 }
 
 export async function updateSession(id: string, entry: TranscriptEntry): Promise<void> {
-    const session = await getSession(id);
-    if (!session) throw new Error("Session not found");
-
-    const transcript = session.transcript || [];
-    transcript.push(entry);
-    await putSession({ ...session, transcript });
+    await mutateSession(id, session => ({
+        ...session,
+        transcript: [...(session.transcript || []), entry]
+    }));
 }
 
 export async function saveArtifacts(id: string, artifacts: SessionArtifacts): Promise<void> {
@@ -95,30 +142,27 @@ export async function saveMemory(id: string, memory: SessionMemory): Promise<voi
 }
 
 export async function appendCheckpoint(id: string, checkpoint: SessionCheckpoint): Promise<void> {
-    const session = await getSession(id);
-    if (!session) throw new Error("Session not found");
-
-    const checkpoints = session.checkpoints || [];
-    checkpoints.push(checkpoint);
-    await putSession({ ...session, checkpoints });
+    await mutateSession(id, session => ({
+        ...session,
+        checkpoints: [...(session.checkpoints || []), checkpoint]
+    }));
 }
 
 export async function appendModeratorDecision(id: string, decision: ModeratorDecision): Promise<void> {
-    const session = await getSession(id);
-    if (!session) throw new Error("Session not found");
-
-    const moderatorDecisions = session.moderatorDecisions || [];
-    moderatorDecisions.push(decision);
-    await putSession({ ...session, moderatorDecisions });
+    await mutateSession(id, session => ({
+        ...session,
+        moderatorDecisions: [...(session.moderatorDecisions || []), decision]
+    }));
 }
 
 export async function saveFinalOutput(id: string, finaleType: FinaleType, text: string): Promise<void> {
-    const session = await getSession(id);
-    if (!session) throw new Error("Session not found");
-
-    const finalOutputs = { ...(session.finalOutputs || {}) };
-    finalOutputs[finaleType] = text;
-    await putSession({ ...session, finalOutputs });
+    await mutateSession(id, session => ({
+        ...session,
+        finalOutputs: {
+            ...(session.finalOutputs || {}),
+            [finaleType]: text
+        }
+    }));
 }
 
 export async function getAllSessions(): Promise<BrainstormSession[]> {
@@ -159,10 +203,8 @@ export async function clearAllSessions(): Promise<void> {
 }
 
 export async function appendEscalation(sessionId: string, escalation: EscalationPayload): Promise<void> {
-    const session = await getSession(sessionId);
-    if (!session) throw new Error("Session not found");
-
-    const escalations = session.escalations || [];
-    escalations.push(escalation);
-    await putSession({ ...session, escalations });
+    await mutateSession(sessionId, session => ({
+        ...session,
+        escalations: [...(session.escalations || []), escalation]
+    }));
 }
