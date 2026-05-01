@@ -50,6 +50,7 @@ DualMind Studio starts from the proven browser-orchestration base of the origina
 - expose identity and operating style as first-class UI concepts
 - show memory usage and prompt composition transparently
 - make agent architecture easier to configure without leaking too much complexity
+- add a full Studio Workshop tab for deep session inspection and intervention, while keeping the side panel as the compact live launcher and monitor
 
 ### Phase 4: Reliability
 
@@ -84,6 +85,38 @@ This repo was bootstrapped from LLM Orchestrator and currently retains:
 - escalation handling
 - checkpoints, branches, and transcript export
 - local session history
+
+## Studio Workshop Direction
+
+DualMind Studio should keep both surfaces:
+
+- **Side panel**: compact launcher, status monitor, quick pause/resume, and "Open Workshop" entry point.
+- **Studio Workshop tab**: full workspace for transcript review, memory inspection, checkpoints, settings, escalation review, and moderator intervention.
+
+The workshop tab is planned as a companion surface, not a side-panel replacement. The side panel remains useful because it can stay visible while Gemini and ChatGPT tabs are generating. The workshop tab is for deeper work when the user wants more space.
+
+### Phase 1 Workshop Scope
+
+The first workshop increment should stay small:
+
+- add `src/studio.html` and `src/studio.ts`
+- register the new Vite entry
+- add an "Open Workshop" button in the side panel header
+- build a three-zone layout:
+  - left rail: setup, profiles, memory, checkpoints
+  - center: live transcript organized by Agent A / Agent B seats, with model transport badges
+  - right rail: persistent intervention composer with pause/resume and escalation controls
+- reuse existing background state, IndexedDB sessions, and pause/resume mechanics
+- use polling initially, with push events deferred to a later phase
+
+Deferred workshop work:
+
+- background push events for live state updates
+- rendered prompt blueprint inspection per turn
+- repair journey and memory diff per turn
+- side-by-side branch comparison
+- per-target moderator notes
+- full PING_PONG prompt unification through the blueprint composer
 
 ## Development
 
