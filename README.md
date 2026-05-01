@@ -97,7 +97,7 @@ The workshop tab is planned as a companion surface, not a side-panel replacement
 
 ### Phase 1 Workshop Scope
 
-The first workshop increment should stay small:
+The first workshop increment is now implemented:
 
 - add `src/studio.html` and `src/studio.ts`
 - register the new Vite entry
@@ -108,6 +108,11 @@ The first workshop increment should stay small:
   - right rail: persistent intervention composer with pause/resume and escalation controls
 - reuse existing background state, IndexedDB sessions, and pause/resume mechanics
 - use polling initially, with push events deferred to a later phase
+
+Tracked follow-ups:
+
+- localize the side-panel "Open Workshop" launcher and workshop tab strings
+- persist Agent A / Agent B seat metadata on transcript entries instead of deriving it in the workshop UI
 
 Deferred workshop work:
 
