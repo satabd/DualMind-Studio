@@ -95,33 +95,59 @@ DualMind Studio should keep both surfaces:
 
 The workshop tab is planned as a companion surface, not a side-panel replacement. The side panel remains useful because it can stay visible while Gemini and ChatGPT tabs are generating. The workshop tab is for deeper work when the user wants more space.
 
-### Phase 1 Workshop Scope
+### Workshop UI (React + Tailwind)
 
-The first workshop increment is now implemented:
+The Studio Workshop ships as a React 19 app under `src/studio/`, built
+with Tailwind v3, Radix primitives, shadcn-style components, and Zustand
+for local UI state. The full architectural reference, design tokens,
+file layout, and the hard constraints around the orchestrator are in
+[docs/architecture-studio-workshop.md](./docs/architecture-studio-workshop.md).
 
-- add `src/studio.html` and `src/studio.ts`
-- register the new Vite entry
-- add an "Open Workshop" button in the side panel header
-- build a three-zone layout:
-  - left rail: setup, profiles, memory, checkpoints
-  - center: live transcript organized by Agent A / Agent B seats, with model transport badges
-  - right rail: persistent intervention composer with pause/resume and escalation controls
-- reuse existing background state, IndexedDB sessions, and pause/resume mechanics
-- use polling initially, with push events deferred to a later phase
+Headline pieces:
 
-Tracked follow-ups:
+- **Header** — sticky, state badge + breadcrumb + Pause/Resume/Stop/Refresh
+- **ThrottlingNotice** — one-time dismissible banner that points users at
+  Chrome's `chrome://settings/performance` "Always keep these sites
+  active" allowlist (the only reliable fix for hidden-tab streaming
+  stalls on ChatGPT and Gemini)
+- **Sessions tab** — session list + vertical timeline (3-col grid:
+  meta | seat-coloured node-on-rail | seat-tinted markdown card) +
+  moderator composer + escalation card. Auto-scrolls to bottom unless
+  the user scrolled up; "Move to last ↓" button restores autofollow.
+- **Memory tab** — kind-grouped entries, filter chips, search,
+  tombstone count.
+- **Decisions tab** — decision memory, moderator interventions, final
+  outputs.
+- **Agents tab** — Synthesis (Agent A) and Skeptic (Agent B) identity
+  cards (read-only placeholder; per-session overrides land later).
 
-- localize the side-panel "Open Workshop" launcher and workshop tab strings
-- persist Agent A / Agent B seat metadata on transcript entries instead of deriving it in the workshop UI
+Markdown bodies render through `marked → DOMPurify` (in that order) and
+use `dir="auto"` plus CSS logical properties so Arabic/Hebrew turns
+flow right-to-left without any script detection.
 
-Deferred workshop work:
+### Hard rule: Workshop changes are UI-only
 
-- background push events for live state updates
+Any change to `src/background.ts`, `src/content.ts`, `src/db.ts`, or
+`public/manifest.json` does **not** belong in a workshop PR. The
+orchestrator never moves, creates, or focuses tabs/windows — agent
+tabs are pre-opened by the user and selected via the popup. Hidden-tab
+throttling is a Chrome browser feature and is solved with the
+user-side allowlist surfaced by `ThrottlingNotice`, not with
+JavaScript workarounds. See
+[docs/architecture-studio-workshop.md](./docs/architecture-studio-workshop.md#hard-constraints-read-before-changing)
+for the full list and the lessons that produced these rules.
+
+### Deferred workshop work
+
+- background push events for live state updates (currently 2s polling)
 - rendered prompt blueprint inspection per turn
 - repair journey and memory diff per turn
 - side-by-side branch comparison
 - per-target moderator notes
-- full PING_PONG prompt unification through the blueprint composer
+- per-session identity / operating-style overrides in the Agents tab
+- localize Workshop strings (currently English only)
+- persist `seat` directly on `TranscriptEntry` so the Timeline does
+  not have to derive it
 
 ## Development
 
@@ -135,6 +161,13 @@ Type-check:
 
 ```bash
 npx tsc --noEmit
+```
+
+Run the regression source tests (cheap, no runtime needed):
+
+```bash
+node scripts/test-runtime-regressions-source.mjs   # orchestrator contracts
+node scripts/test-studio-workshop-source.mjs       # workshop UI contracts
 ```
 
 Build:

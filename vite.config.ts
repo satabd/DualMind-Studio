@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
 export default defineConfig({
     base: './',
     root: 'src',
     publicDir: '../public',
+    plugins: [react()],
     build: {
         outDir: '../dist',
         emptyOutDir: true,
@@ -21,7 +23,7 @@ export default defineConfig({
             },
             output: {
                 entryFileNames: '[name].js',
-                chunkFileNames: '[name].js',
+                chunkFileNames: 'chunks/[name]-[hash].js',
                 assetFileNames: '[name].[ext]'
             }
         }
