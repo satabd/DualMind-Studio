@@ -97,6 +97,12 @@ export interface TranscriptEntry {
     // AR: حفظ المقعد ("Agent A" / "Agent B") مباشرة على الدور حتى لا تعيد
     //     الواجهة حسابه من ترتيب الأدوار.
     seat?: AgentSeat;
+    // EN: The exact memory entries that were folded into this turn's prompt.
+    //     Lets the UI display "memory sent to agents this turn" from
+    //     authoritative state instead of recomputing.
+    // AR: مدخلات الذاكرة التي أُدرجت فعلياً في مطالبة هذا الدور — حتى
+    //     تعرض الواجهة ما أُرسل بالضبط بدلاً من إعادة الحساب.
+    promptMemorySnapshot?: MemoryEntry[];
 }
 
 export interface EscalationPayload {
