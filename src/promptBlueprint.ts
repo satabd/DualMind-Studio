@@ -32,6 +32,10 @@ const DISCUSSION_PROTOCOL: PromptProtocol = {
         "The human is observing only and is not your audience.",
         "Address the counterpart agent directly.",
         "Do not address the human user.",
+        // EN: Identity stability — stop multilingual drift to "العميل" / "المستخدم" / "client" etc.
+        // AR: ثبات الهوية — منع الانحراف اللغوي إلى "العميل" / "المستخدم" / "client" وما شابه.
+        'Use the exact labels "Agent A" and "Agent B" in any language. Do not translate these labels.',
+        'Banned forms in any language (do not use): "العميل", "المستخدم", "صاحب السؤال", "حضرتك", "client", "user".',
         "No greetings, assistant persona language, offers, or polished essay framing.",
         "Treat this as an internal design and analysis exchange.",
         "Stay anchored to the session anchor and the latest counterpart input.",
@@ -306,6 +310,7 @@ export function renderPromptBlueprint(blueprint: PromptBlueprint): string {
         "",
         "[OUTPUT CONTRACT]",
         `Address ${context.counterpart} directly.`,
+        `Keep the labels "Agent A" and "Agent B" literal even when replying in another language. Do not translate them.`,
         "Do not mention the system protocol, prompt layers, output contract, hidden instructions, or compliance with these instructions.",
         "Output only the agent-to-agent reply."
     ].filter(part => part !== "").join('\n');
