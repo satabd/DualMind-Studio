@@ -946,7 +946,14 @@ async function executeAgentTurn(
         //     from agent index. Forced-fallback System turns inherit the seat
         //     of the agent whose output failed repair.
         // AR: نحفظ المقعد على الدور مباشرة حتى لا تعيد الواجهة حسابه.
-        seat
+        seat,
+        // EN: Snapshot the memory entries that were actually folded into this
+        //     turn's blueprint.  PING_PONG mode does not yet read memory into
+        //     prompts (issue #8), so we only stamp the snapshot for DISCUSSION
+        //     to keep the UI honest about what was sent.
+        // AR: نحفظ مدخلات الذاكرة المُرسَلة فعلاً في هذا الدور (وضع DISCUSSION
+        //     فقط؛ سيُفعَّل وضع PING_PONG عند مهاجرته إلى blueprint).
+        promptMemorySnapshot: brainstormState.mode === "DISCUSSION" ? (memory?.entries || []) : undefined
     });
 
     if (brainstormState.mode === 'DISCUSSION') {

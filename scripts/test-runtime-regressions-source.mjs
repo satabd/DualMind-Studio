@@ -33,9 +33,11 @@ assert.match(backgroundSource, /consecutiveConvergenceSignals/, 'discussion loop
 assert.match(backgroundSource, /resumingAfterFirstEscalation/, 'first-turn escalation must reuse the round on resume rather than re-running the first speaker');
 assert.doesNotMatch(backgroundSource, /brainstormState\.currentRound--/, 'escalation must not decrement the round counter — that produces a duplicate first-turn entry');
 assert.match(backgroundSource, /agent: systemFallback \? 'System' : speaker/, 'forced discussion repair fallback must be stored as System output');
-assert.match(backgroundSource, /persistTurn\(\{[\s\S]{0,400}?seat\b/, 'persistTurn calls must include the seat so the workshop never has to recompute it');
+assert.match(backgroundSource, /persistTurn\(\{[\s\S]{0,500}?seat\b/, 'persistTurn calls must include the seat so the workshop never has to recompute it');
 assert.match(typesSource, /seat\?:\s*AgentSeat/, 'TranscriptEntry must carry a persisted seat');
 assert.match(timelineSource, /entry\.seat === 'Agent A' \|\| entry\.seat === 'Agent B'/, 'Timeline must prefer the persisted seat over per-round recomputation');
+assert.match(typesSource, /promptMemorySnapshot\?:\s*MemoryEntry\[\]/, 'TranscriptEntry must carry the memory snapshot actually used in this turn');
+assert.match(backgroundSource, /promptMemorySnapshot:\s*brainstormState\.mode === "DISCUSSION"/, 'persistTurn must stamp the memory snapshot from the same memory that was rendered into the prompt');
 assert.match(backgroundSource, /structural discussion guard/i, 'discussion guard should be structural, not broad phrase filtering');
 assert.doesNotMatch(backgroundSource, /"let me know"/, 'discussion guard should not ban common substrings globally');
 assert.doesNotMatch(backgroundSource, /"for you"/, 'discussion guard should not ban common substrings globally');
