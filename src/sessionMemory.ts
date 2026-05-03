@@ -6,6 +6,32 @@ import type {
 } from './types.js';
 
 const DEFAULT_MEMORY_LIMIT = 24;
+const MIN_MEMORY_TEXT_LENGTH = 20;
+
+// EN: Banned placeholder fragments — these are heading rows or template stubs
+//     leaking from the artifact extractor, not real facts. Reject them
+//     before they enter memory.
+// AR: قوائم محظورة — هذه عناوين أو قوالب فارغة تأتي من مستخرج المخرجات،
+//     وليست حقائق حقيقية. نرفضها قبل دخول الذاكرة.
+const BANNED_PLACEHOLDERS = new Set<string>([
+    "unresolved items",
+    "established facts",
+    "unsupported claims",
+    "risks",
+    "questions",
+    "decisions",
+    "highlights",
+    "ideas",
+    "* risk_level",
+    "## gemini said",
+    "## chatgpt said"
+]);
+
+// Heading-only, bullet-only, or numbered-marker-only lines.
+const STRUCTURAL_NOISE = /^(?:#{1,6}\s|[-*]\s*$|\d+\.\s*$)/;
+
+// "Label:" lines with no content (e.g. "Risk:", "Question:").
+const LABEL_ONLY = /^[A-Za-z][A-Za-z _-]*:\s*$/;
 
 // EN: Session memory stores compact conclusions, not raw transcript history.
 // AR: ذاكرة الجلسة تحفظ خلاصات مركزة، وليس سجل المحادثة الخام.
@@ -15,6 +41,18 @@ export function createEmptySessionMemory(): SessionMemory {
 
 function normalizeText(text: string) {
     return text.trim().replace(/\s+/g, ' ');
+}
+
+// EN: Reject placeholder-shaped text so it never becomes a memory entry.
+// AR: نرفض النصوص ذات الشكل الفارغ حتى لا تدخل الذاكرة.
+export function isPlaceholderMemoryText(text: string): boolean {
+    const clean = normalizeText(text);
+    if (!clean) return true;
+    if (clean.length < MIN_MEMORY_TEXT_LENGTH) return true;
+    if (STRUCTURAL_NOISE.test(clean)) return true;
+    if (LABEL_ONLY.test(clean)) return true;
+    if (BANNED_PLACEHOLDERS.has(clean.toLowerCase())) return true;
+    return false;
 }
 
 export function getMemoryEntryKey(entry: Pick<MemoryEntry, "kind" | "text">) {
@@ -30,7 +68,7 @@ function makeMemoryEntry(
     tags: string[] = []
 ): MemoryEntry | null {
     const clean = normalizeText(text);
-    if (!clean) return null;
+    if (isPlaceholderMemoryText(clean)) return null;
     return { id, kind, text: clean, createdAt, source, tags };
 }
 

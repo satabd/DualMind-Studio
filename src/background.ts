@@ -473,11 +473,32 @@ function dedupe(items: string[]) {
     return [...new Set(items.filter(Boolean))];
 }
 
+// EN: Skip structural noise so artifact buckets don't capture markdown
+//     headings, lone bullets, or template fragments. The threshold matches
+//     the memory-entry minimum so what we extract survives validation.
+// AR: تجاهل الضوضاء البنيوية حتى لا تلتقط الأقسام عناوين Markdown أو
+//     علامات نقطية فارغة أو قوالب جاهزة.
+const ARTIFACT_LINE_NOISE = /^(?:#{1,6}\s|[-*]\s*$|\d+\.\s*$|>\s*$)/;
+const ARTIFACT_LABEL_ONLY = /^[A-Za-z][A-Za-z _-]*:\s*$/;
+const ARTIFACT_MIN_LENGTH = 20;
+
+function meaningfulContent(line: string): string {
+    return line.replace(/^[-*\d.]+\s*/, '').trim();
+}
+
+function isArtifactLineWorthKeeping(line: string): boolean {
+    if (!line) return false;
+    if (ARTIFACT_LINE_NOISE.test(line)) return false;
+    if (ARTIFACT_LABEL_ONLY.test(line)) return false;
+    if (meaningfulContent(line).length < ARTIFACT_MIN_LENGTH) return false;
+    return true;
+}
+
 function buildArtifacts(transcript: TranscriptEntry[], framing?: SessionFraming): SessionArtifacts {
     const artifacts = emptyArtifacts();
     const assistantTurns = transcript.filter(entry => entry.agent === "Gemini" || entry.agent === "ChatGPT");
     assistantTurns.slice(-8).forEach(entry => {
-        const lines = entry.text.split(/\n+/).map(line => line.trim()).filter(Boolean);
+        const lines = entry.text.split(/\n+/).map(line => line.trim()).filter(isArtifactLineWorthKeeping);
         if (lines[0]) artifacts.highlights.push(lines[0]);
         lines.forEach(line => {
             const lower = line.toLowerCase();

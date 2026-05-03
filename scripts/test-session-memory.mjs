@@ -16,6 +16,7 @@ const transpiled = ts.transpileModule(source, {
 const moduleUrl = `data:text/javascript;charset=utf-8,${encodeURIComponent(transpiled)}`;
 const {
   createEmptySessionMemory,
+  isPlaceholderMemoryText,
   memoryEntriesFromCheckpoint,
   memoryEntryFromModeratorDecision,
   mergeSessionMemory,
@@ -79,5 +80,39 @@ const selected = selectPromptMemory(merged, 3);
 assert.equal(selected.entries.length, 3);
 assert.equal(selected.entries[0].kind, 'decision');
 assert.match(selected.entries.map(entry => entry.kind).join(','), /fact|risk|question/);
+
+// Placeholder rejection — memory must not accept structural noise or label-only fragments.
+assert.equal(isPlaceholderMemoryText(''), true, 'empty text is a placeholder');
+assert.equal(isPlaceholderMemoryText('* risk_level'), true, 'banned placeholder must be rejected');
+assert.equal(isPlaceholderMemoryText('## Gemini said'), true, 'markdown heading must be rejected');
+assert.equal(isPlaceholderMemoryText('Unresolved Items:'), true, 'label-only line must be rejected');
+assert.equal(isPlaceholderMemoryText('Risk:'), true, 'bare label must be rejected');
+assert.equal(isPlaceholderMemoryText('- '), true, 'lone bullet must be rejected');
+assert.equal(isPlaceholderMemoryText('short'), true, 'too-short text must be rejected');
+assert.equal(
+  isPlaceholderMemoryText('Memory must be inspectable and clearable.'),
+  false,
+  'real conclusion must pass'
+);
+
+const placeholderCheckpoint = {
+  ...checkpoint,
+  id: 'cp_placeholder',
+  artifactSnapshot: {
+    highlights: ['## Gemini said'],
+    ideas: ['- '],
+    risks: ['* risk_level'],
+    questions: ['Unresolved Items:'],
+    decisions: ['Risk:'],
+    synthesis: ''
+  },
+  summary: ''
+};
+const placeholderEntries = memoryEntriesFromCheckpoint(placeholderCheckpoint);
+assert.equal(
+  placeholderEntries.length,
+  0,
+  'a checkpoint whose artifacts are all placeholders must produce zero memory entries'
+);
 
 console.log('session memory tests passed');
