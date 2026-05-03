@@ -912,7 +912,12 @@ async function executeAgentTurn(
         intent: brainstormState.currentIntent,
         phase: brainstormState.currentPhase,
         repairStatus,
-        checkpointTag: brainstormState.activeCheckpointId
+        checkpointTag: brainstormState.activeCheckpointId,
+        // EN: Stamp the seat directly so the workshop never has to recompute it
+        //     from agent index. Forced-fallback System turns inherit the seat
+        //     of the agent whose output failed repair.
+        // AR: نحفظ المقعد على الدور مباشرة حتى لا تعيد الواجهة حسابه.
+        seat
     });
 
     if (brainstormState.mode === 'DISCUSSION') {
@@ -936,6 +941,13 @@ async function runBrainstormLoop(runId: string) {
     const activeRole = ROLE_PROMPTS[brainstormState.role] ? brainstormState.role : "CRITIC";
     const roleConfig = ROLE_PROMPTS[activeRole];
     let consecutiveConvergenceSignals = 0;
+    // EN: When the first speaker of a round emits an escalation, the loop
+    //     pauses for human input. On resume we must NOT re-run the first
+    //     speaker (it would persist a duplicate transcript entry under the
+    //     same seat), so we set this flag and skip ahead to the second turn.
+    // AR: عند صدور تصعيد من المتحدث الأول، نتجاوز إعادة تشغيله بعد الاستئناف
+    //     حتى لا يُسجَّل دوران بنفس المقعد.
+    let resumingAfterFirstEscalation = false;
     log(`Loop started with role: ${activeRole}`);
 
     const noteConvergence = (turn: { converged?: boolean; systemFallback?: boolean }) => {
@@ -954,10 +966,12 @@ async function runBrainstormLoop(runId: string) {
 
     try {
         while (brainstormState.active && activeRunId === runId && brainstormState.currentRound < brainstormState.rounds) {
-            brainstormState.currentRound++;
-            brainstormState.currentPhase = getPhase(brainstormState.currentRound, brainstormState.rounds);
-            saveState();
-            log(`Round ${brainstormState.currentRound} initiating in phase ${brainstormState.currentPhase}...`);
+            if (!resumingAfterFirstEscalation) {
+                brainstormState.currentRound++;
+                brainstormState.currentPhase = getPhase(brainstormState.currentRound, brainstormState.rounds);
+                saveState();
+                log(`Round ${brainstormState.currentRound} initiating in phase ${brainstormState.currentPhase}...`);
+            }
 
             while (brainstormState.isPaused && brainstormState.active && activeRunId === runId) await wait(1000);
             if (!brainstormState.active || activeRunId !== runId) break;
@@ -969,25 +983,41 @@ async function runBrainstormLoop(runId: string) {
             const firstSeat = getSeatForTurn(firstSpeaker, firstSpeaker);
             const secondSeat = getSeatForTurn(secondSpeaker, firstSpeaker);
 
-            const firstTurn = await executeAgentTurn(firstSpeaker, firstSeat, brainstormState.currentRound === 1, roleConfig, framing, promptMemory, session?.topic);
-            if (!brainstormState.active || activeRunId !== runId) break;
-            if (firstTurn.escalated) {
-                brainstormState.currentRound--;
-                continue;
+            let firstOutput: string;
+            let firstConverged = false;
+            let firstSystemFallback = false;
+            if (resumingAfterFirstEscalation) {
+                resumingAfterFirstEscalation = false;
+                // The first speaker already produced (and persisted) the escalation
+                // turn last iteration. The human's resolution lives in resumeContext
+                // and will be folded into the second turn's prompt by executeAgentTurn.
+                firstOutput = brainstormState.prompt;
+            } else {
+                const firstTurn = await executeAgentTurn(firstSpeaker, firstSeat, brainstormState.currentRound === 1, roleConfig, framing, promptMemory, session?.topic);
+                if (!brainstormState.active || activeRunId !== runId) break;
+                if (firstTurn.escalated) {
+                    resumingAfterFirstEscalation = true;
+                    continue;
+                }
+                firstOutput = firstTurn.output;
+                firstConverged = !!firstTurn.converged;
+                firstSystemFallback = !!firstTurn.systemFallback;
             }
 
             await wait(1500);
             while (brainstormState.isPaused && brainstormState.active && activeRunId === runId) await wait(1000);
             if (!brainstormState.active || activeRunId !== runId) break;
-            const secondTurn = await executeAgentTurn(secondSpeaker, secondSeat, false, roleConfig, framing, promptMemory, session?.topic, firstTurn.output);
+            const secondTurn = await executeAgentTurn(secondSpeaker, secondSeat, false, roleConfig, framing, promptMemory, session?.topic, firstOutput);
             if (!brainstormState.active || activeRunId !== runId) break;
             if (secondTurn.escalated) {
-                brainstormState.currentRound--;
+                // Second-turn escalation: do NOT decrement currentRound. The next
+                // iteration will start a fresh round, avoiding the duplicate-first-turn
+                // shape that the old `currentRound--` produced.
                 continue;
             }
 
             await maybeCreateCheckpoint(secondTurn.output);
-            if (noteConvergence(firstTurn) || noteConvergence(secondTurn)) break;
+            if (noteConvergence({ converged: firstConverged, systemFallback: firstSystemFallback }) || noteConvergence(secondTurn)) break;
             await wait(1500);
         }
     } catch (err: any) {
