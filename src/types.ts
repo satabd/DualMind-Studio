@@ -91,6 +91,12 @@ export interface TranscriptEntry {
     phase?: SessionPhase;
     repairStatus?: RepairStatus;
     checkpointTag?: string | null;
+    // EN: Persisted seat ("Agent A" / "Agent B") so the workshop never has to
+    //     recompute it from the turn index. System fallback turns inherit the
+    //     seat of the agent whose output failed repair.
+    // AR: حفظ المقعد ("Agent A" / "Agent B") مباشرة على الدور حتى لا تعيد
+    //     الواجهة حسابه من ترتيب الأدوار.
+    seat?: AgentSeat;
 }
 
 export interface EscalationPayload {

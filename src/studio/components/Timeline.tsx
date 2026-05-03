@@ -8,13 +8,16 @@ import { cn, formatTimestamp } from '../lib/utils.js';
 
 type Seat = 'Agent A' | 'Agent B' | 'System' | 'User';
 
-// Mirrors getSeatForEntry in src/studio.ts (the legacy logic): seats alternate
-// per round, so the same agent (Gemini or ChatGPT) plays Agent A on odd rounds
-// and Agent B on even rounds.  Computing it from the transcript order keeps
-// the seat label correct without us needing to persist it on TranscriptEntry.
+// Prefer the seat persisted on the entry (issue #3). Fall back to the legacy
+// per-round alternation only for sessions saved before seat persistence
+// landed: round-N first speaker is always Agent A, second is Agent B, with
+// Gemini/ChatGPT swapping which seat they hold each round.
 function getSeat(entry: TranscriptEntry, agentTurnIndex: number, firstSpeaker: string): Seat {
-    if (entry.agent === 'System') return 'System';
     if (entry.agent === 'User') return 'User';
+    // Forced-fallback System turns inherit the seat of the agent whose output
+    // failed; honour that so the timeline tints them correctly.
+    if (entry.seat === 'Agent A' || entry.seat === 'Agent B') return entry.seat;
+    if (entry.agent === 'System') return 'System';
     const round = Math.floor(agentTurnIndex / 2) + 1;
     const roundFirst = round % 2 === 1
         ? firstSpeaker
