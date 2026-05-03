@@ -49,6 +49,12 @@ export interface PromptProtocol {
     label: string;
     rules: string[];
     escalationFormat?: string;
+    // EN: Optional per-protocol output contract.  DISCUSSION uses the default
+    //     "address counterpart agent" contract; PING_PONG overrides with an
+    //     iteration-friendly contract that does not assume agent-to-agent
+    //     framing.
+    // AR: عقد إخراج اختياري لكل بروتوكول.
+    outputContract?: string[];
 }
 
 export interface PromptSessionContext {

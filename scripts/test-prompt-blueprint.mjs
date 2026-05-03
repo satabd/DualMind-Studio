@@ -14,7 +14,7 @@ const transpiled = ts.transpileModule(source, {
 }).outputText;
 
 const moduleUrl = `data:text/javascript;charset=utf-8,${encodeURIComponent(transpiled)}`;
-const { buildDiscussionBlueprint, renderPromptBlueprint } = await import(moduleUrl);
+const { buildDiscussionBlueprint, buildPingPongBlueprint, renderPromptBlueprint } = await import(moduleUrl);
 
 const blueprint = buildDiscussionBlueprint({
   speaker: 'Gemini',
@@ -93,5 +93,32 @@ assert.match(backgroundSource, /structural discussion guard/i);
 assert.doesNotMatch(backgroundSource, /"i recommend"/, 'role prompts must be allowed to recommend, reject, or stress-test');
 assert.match(backgroundSource, /agent: systemFallback \? 'System' : speaker/, 'forced repair fallback must persist as a System note');
 assert.doesNotMatch(backgroundSource, /return \{ text: buildForcedDiscussionReply\(counterpart\), status: "forced" \}/);
+
+// PING_PONG migration (issue #8) — both modes now flow through promptBlueprint.
+assert.match(backgroundSource, /buildPingPongBlueprint/, 'PING_PONG must render via buildPingPongBlueprint');
+assert.match(backgroundSource, /import \{[\s\S]*?buildPingPongBlueprint[\s\S]*?\} from '.\/promptBlueprint\.js'/, 'background.ts must import buildPingPongBlueprint from promptBlueprint');
+
+const pingPongRendered = renderPromptBlueprint(buildPingPongBlueprint({
+  speaker: 'Gemini',
+  seat: 'Agent A',
+  isOpeningTurn: true,
+  role: 'EXPANDER',
+  rootTopic: 'Design a friendlier onboarding for older users.',
+  roleNarrative: 'Topic: "Design a friendlier onboarding for older users."\n\nProvide an initial creative concept for this topic. Keep it open-ended.',
+  phase: 'DIVERGE',
+  intent: 'expand',
+  memory: {
+    entries: [
+      { id: 'm2', kind: 'fact', text: 'Memory must survive PING_PONG mode too.', createdAt: 1, source: 'checkpoint' }
+    ]
+  }
+}));
+assert.match(pingPongRendered, /SYSTEM PROTOCOL/);
+assert.match(pingPongRendered, /Collaborative Exchange Protocol/, 'PING_PONG must use the Collaborative Exchange protocol label');
+assert.match(pingPongRendered, /You are Agent A: Synthesis Architect/);
+assert.match(pingPongRendered, /Memory must survive PING_PONG mode too\./, 'PING_PONG must include session memory in the rendered prompt');
+assert.match(pingPongRendered, /Provide an initial creative concept/, 'PING_PONG must carry the role narrative as the latest input');
+assert.match(pingPongRendered, /Build on the previous contribution/, 'PING_PONG output contract must be iterative, not agent-to-agent');
+assert.doesNotMatch(pingPongRendered, /Output only the agent-to-agent reply/, 'PING_PONG must NOT use the discussion-mode output contract');
 
 console.log('prompt blueprint tests passed');

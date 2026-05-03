@@ -32,6 +32,7 @@ import {
 } from './types.js';
 import {
     buildDiscussionBlueprint,
+    buildPingPongBlueprint,
     renderPromptBlueprint
 } from './promptBlueprint.js';
 import {
@@ -168,7 +169,12 @@ async function ensureInjected(tabId: number) {
     } catch { }
 }
 
-// Legacy PING_PONG prompt path. DISCUSSION prompts use promptBlueprint.ts; migrate this table after the drift-control changes settle.
+// Legacy PING_PONG prompt path — per-role narrative templates. As of issue
+// #8, the rendered narrative from this table is wrapped in the layered
+// blueprint (Identity / Style / Memory / Output Contract) by
+// buildPingPongBlueprint — it is no longer the entire prompt. Future work
+// can fold these directly into role directives if cleaner per-role parity
+// is needed.
 const ROLE_PROMPTS: Record<string, {
     geminiInit: (topic: string, cp?: string) => string;
     chatGPTInit: (topic: string, cp?: string) => string;
@@ -885,8 +891,9 @@ async function executeAgentTurn(
     const anchoredBasePrompt = brainstormState.mode === "DISCUSSION"
         ? basePrompt
         : buildSeedAnchoredInput(sessionSeed, basePrompt, isOpeningTurn);
-    let prompt = brainstormState.mode === "DISCUSSION"
-        ? renderPromptBlueprint(buildDiscussionBlueprint({
+    let prompt: string;
+    if (brainstormState.mode === "DISCUSSION") {
+        prompt = renderPromptBlueprint(buildDiscussionBlueprint({
             speaker,
             seat,
             isOpeningTurn,
@@ -897,12 +904,26 @@ async function executeAgentTurn(
             intent: brainstormState.currentIntent,
             framing,
             memory
-        }))
-        : isOpeningTurn
+        }));
+    } else {
+        // PING_PONG: render the existing role-prompt narrative, then wrap it
+        // in the layered shell so the agent gets memory + identity + the
+        // PING_PONG output contract too (issue #8).
+        const roleNarrative = isOpeningTurn
             ? agent.initPrompt(roleConfig, anchoredBasePrompt)
             : agent.loopPrompt(roleConfig, anchoredBasePrompt);
-
-    if (brainstormState.mode !== "DISCUSSION") {
+        prompt = renderPromptBlueprint(buildPingPongBlueprint({
+            speaker,
+            seat,
+            isOpeningTurn,
+            role: brainstormState.role,
+            rootTopic,
+            roleNarrative,
+            phase: brainstormState.currentPhase,
+            intent: brainstormState.currentIntent,
+            framing,
+            memory
+        }));
         prompt = addPhaseGuidance(prompt, brainstormState.currentPhase, brainstormState.currentIntent, framing);
     }
 
