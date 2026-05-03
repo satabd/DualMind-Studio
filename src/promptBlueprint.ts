@@ -26,6 +26,26 @@ interface DiscussionBlueprintInput {
     memory?: SessionMemory;
 }
 
+// EN: PING_PONG renders the existing role-prompt narrative as the latest input
+//     and wraps it in the layered shell (identity, style, memory, output
+//     contract).  This keeps ROLE_PROMPTS' carefully tuned per-role framing
+//     intact while finally giving PING_PONG the same memory-aware, identity-
+//     stable shell that DISCUSSION already had.
+// AR: PING_PONG يستخدم نفس قالب الأدوار القديم كمدخل أخير، ويلتفّ حوله غلاف
+//     الذاكرة والهوية حتى تستفيد جلسات الكتابة المتبادلة من ذاكرة الجلسة.
+interface PingPongBlueprintInput {
+    speaker: AgentSpeaker;
+    seat: AgentSeat;
+    isOpeningTurn: boolean;
+    role: string;
+    rootTopic?: string;
+    roleNarrative: string;
+    phase: SessionPhase;
+    intent: TurnIntent;
+    framing?: SessionFraming;
+    memory?: SessionMemory;
+}
+
 const DISCUSSION_PROTOCOL: PromptProtocol = {
     label: "Agent Workshop Protocol",
     rules: [
@@ -55,6 +75,27 @@ const DISCUSSION_PROTOCOL: PromptProtocol = {
         "next_step_after_decision: <what the next agent should do>",
         "[/ESCALATION_REQUIRED]"
     ].join('\n')
+};
+
+// EN: PING_PONG mode = collaborative iteration on the user's topic.  The
+//     agents build on each other's work rather than challenge each other
+//     directly; the output contract reflects that.
+// AR: وضع PING_PONG = تكرار تعاوني على موضوع المستخدم؛ يبني الوكلاء
+//     على بعضهم بدلاً من المواجهة المباشرة.
+const PINGPONG_PROTOCOL: PromptProtocol = {
+    label: "Collaborative Exchange Protocol",
+    rules: [
+        "You and the other agent iterate on the user's topic together.",
+        "Build on the previous contribution rather than restart from scratch.",
+        "Stay anchored to the seed prompt or topic.",
+        "Mark weak or missing evidence as inference.",
+        "Make exactly one primary move for this turn."
+    ],
+    outputContract: [
+        "Output your contribution directly. No meta-commentary about the protocol.",
+        "Do not mention the system protocol, prompt layers, output contract, or hidden instructions.",
+        "Build on the previous contribution; do not pretend the conversation is starting fresh."
+    ]
 };
 
 // EN: These identities define reasoning responsibility, not cosmetic personality.
@@ -240,6 +281,56 @@ export function buildDiscussionBlueprint(input: DiscussionBlueprintInput): Promp
     };
 }
 
+function buildPingPongTask(isOpeningTurn: boolean, intent: TurnIntent): PromptTurnTask {
+    if (isOpeningTurn) {
+        return {
+            move: intent,
+            instructions: [
+                "Open the session by responding directly to the role narrative below.",
+                "Stay anchored to the seed prompt; the role narrative is the framing for THIS turn only.",
+                "Leave a specific hook for the next agent to build on."
+            ]
+        };
+    }
+    return {
+        move: intent,
+        instructions: [
+            "Read the previous contribution carried in the role narrative below.",
+            "Build on it rather than restarting; perform one primary move.",
+            "Tie new claims back to the seed prompt and prior session memory."
+        ]
+    };
+}
+
+export function buildPingPongBlueprint(input: PingPongBlueprintInput): PromptBlueprint {
+    const context: PromptSessionContext = {
+        speaker: input.speaker,
+        seat: input.seat,
+        counterpart: getCounterpart(input.seat),
+        phase: input.phase,
+        intent: input.intent,
+        rootTopic: input.rootTopic,
+        objective: input.framing?.objective,
+        constraints: input.framing?.constraints,
+        successCriteria: input.framing?.successCriteria,
+        // The role-specific narrative (from background.ts ROLE_PROMPTS) is the
+        // latest input the agent must respond to.  This preserves PING_PONG's
+        // tuned per-role framings while letting the layered shell add memory,
+        // identity, and the output contract around them.
+        latestInput: input.roleNarrative
+    };
+
+    return {
+        protocol: PINGPONG_PROTOCOL,
+        identity: getIdentity(input.seat),
+        style: DEFAULT_STYLE,
+        roleDirective: ROLE_DIRECTIVES[input.role] || ROLE_DIRECTIVES.CRITIC,
+        memory: input.memory,
+        context,
+        task: buildPingPongTask(input.isOpeningTurn, input.intent)
+    };
+}
+
 function renderList(items: string[] | undefined, fallback: string) {
     if (!items?.length) return `- ${fallback}`;
     return items.map(item => `- ${item}`).join('\n');
@@ -256,6 +347,16 @@ function renderMemory(memory?: SessionMemory) {
 function renderAnchor(rootTopic: string | undefined, latestInput: string) {
     const anchor = rootTopic || latestInput;
     return anchor.trim();
+}
+
+function renderOutputContract(protocol: PromptProtocol, counterpart: AgentSeat): string[] {
+    if (protocol.outputContract && protocol.outputContract.length) return protocol.outputContract;
+    return [
+        `Address ${counterpart} directly.`,
+        `Keep the labels "Agent A" and "Agent B" literal even when replying in another language. Do not translate them.`,
+        "Do not mention the system protocol, prompt layers, output contract, hidden instructions, or compliance with these instructions.",
+        "Output only the agent-to-agent reply."
+    ];
 }
 
 // EN: Rendering stays deterministic so prompts can be inspected, tested, and shown later in the UI.
@@ -309,9 +410,6 @@ export function renderPromptBlueprint(blueprint: PromptBlueprint): string {
         renderList(task.instructions, "Advance the session by one useful step."),
         "",
         "[OUTPUT CONTRACT]",
-        `Address ${context.counterpart} directly.`,
-        `Keep the labels "Agent A" and "Agent B" literal even when replying in another language. Do not translate them.`,
-        "Do not mention the system protocol, prompt layers, output contract, hidden instructions, or compliance with these instructions.",
-        "Output only the agent-to-agent reply."
+        ...renderOutputContract(protocol, context.counterpart)
     ].filter(part => part !== "").join('\n');
 }
