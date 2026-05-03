@@ -571,3 +571,36 @@ ul {
     flex-direction: column;
   }
 }
+
+/* Workshop launcher hint banner — surfaces the Workshop window as the
+   primary live-monitoring + steering surface (issue #5). */
+.workshop-launcher-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px dashed var(--border, rgba(255, 255, 255, 0.18));
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.workshop-launcher-banner p {
+  flex: 1;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--fg-muted, rgba(255, 255, 255, 0.78));
+}
+
+.workshop-launcher-banner .btn.primary {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .workshop-launcher-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

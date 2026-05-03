@@ -861,6 +861,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     ELEMENTS.startBtn.addEventListener('click', startRun);
     ELEMENTS.openWorkshopBtn.addEventListener('click', () => createTab('studio.html'));
+    document.getElementById('openWorkshopBannerBtn')?.addEventListener('click', () => createTab('studio.html'));
     ELEMENTS.firstAgentSelect.addEventListener('change', () => {
         syncAgentOrder(ELEMENTS.firstAgentSelect.value as AgentSpeaker);
         saveUIConfig();
