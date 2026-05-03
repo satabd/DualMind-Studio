@@ -103,6 +103,13 @@ export interface TranscriptEntry {
     // AR: مدخلات الذاكرة التي أُدرجت فعلياً في مطالبة هذا الدور — حتى
     //     تعرض الواجهة ما أُرسل بالضبط بدلاً من إعادة الحساب.
     promptMemorySnapshot?: MemoryEntry[];
+    // EN: The exact prompt that was sent to produce this turn (rendered
+    //     blueprint for DISCUSSION, or the role-prompt template for
+    //     PING_PONG).  Lets the workshop's Show prompt affordance display
+    //     authoritative state, not a re-render.
+    // AR: المطالبة الفعلية المرسلة لهذا الدور — حتى يعرضها مفتش المطالبات
+    //     في الواجهة كما هي بدلاً من إعادة بنائها.
+    promptSnapshot?: string;
 }
 
 export interface EscalationPayload {

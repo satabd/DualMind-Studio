@@ -38,6 +38,10 @@ assert.match(typesSource, /seat\?:\s*AgentSeat/, 'TranscriptEntry must carry a p
 assert.match(timelineSource, /entry\.seat === 'Agent A' \|\| entry\.seat === 'Agent B'/, 'Timeline must prefer the persisted seat over per-round recomputation');
 assert.match(typesSource, /promptMemorySnapshot\?:\s*MemoryEntry\[\]/, 'TranscriptEntry must carry the memory snapshot actually used in this turn');
 assert.match(backgroundSource, /promptMemorySnapshot:\s*brainstormState\.mode === "DISCUSSION"/, 'persistTurn must stamp the memory snapshot from the same memory that was rendered into the prompt');
+assert.match(typesSource, /promptSnapshot\?:\s*string/, 'TranscriptEntry must carry the rendered prompt for inspection');
+assert.match(backgroundSource, /promptSnapshot:\s*prompt/, 'persistTurn must capture the canonical prompt that produced this turn');
+assert.match(timelineSource, /entry\.promptSnapshot/, 'Timeline must surface the prompt snapshot via a Show prompt affordance');
+assert.match(timelineSource, /Show prompt/, 'Timeline must label the prompt-inspection toggle "Show prompt"');
 assert.match(backgroundSource, /structural discussion guard/i, 'discussion guard should be structural, not broad phrase filtering');
 assert.doesNotMatch(backgroundSource, /"let me know"/, 'discussion guard should not ban common substrings globally');
 assert.doesNotMatch(backgroundSource, /"for you"/, 'discussion guard should not ban common substrings globally');

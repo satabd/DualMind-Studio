@@ -144,6 +144,16 @@ function TurnRow({ item }: { item: TimelineEntry }) {
                     )}
                 </header>
                 <MarkdownBody text={entry.text} />
+                {entry.promptSnapshot && (
+                    <details className="text-xs text-fg-subtle">
+                        <summary className="cursor-pointer select-none font-mono uppercase text-[10px]">
+                            Show prompt
+                        </summary>
+                        <pre className="mt-2 max-h-[400px] overflow-auto whitespace-pre-wrap rounded-md border border-border bg-bg/60 p-2 text-[11px] text-fg-muted">
+                            {entry.promptSnapshot}
+                        </pre>
+                    </details>
+                )}
             </div>
         </article>
     );
