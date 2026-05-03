@@ -24,6 +24,13 @@ const KIND_VARIANT: Record<MemoryEntryKind, 'accent' | 'system' | 'paused' | 'es
     assumption: 'system'
 };
 
+const SOURCE_LABEL: Record<string, string> = {
+    checkpoint: 'from checkpoint',
+    moderator: 'from moderator',
+    agent: 'from agent',
+    system: 'from system'
+};
+
 export function MemoryTab() {
     const { selectedSession } = useWorkshopStore();
     const [filter, setFilter] = useState<MemoryEntryKind | 'all'>('all');
@@ -111,7 +118,10 @@ export function MemoryTab() {
                             <Badge variant={KIND_VARIANT[entry.kind]} size="sm">
                                 {KIND_LABEL[entry.kind]}
                             </Badge>
-                            <span className="text-xs text-fg-subtle font-mono">
+                            <span className="text-[10px] uppercase font-mono text-fg-subtle">
+                                {SOURCE_LABEL[entry.source] || entry.source}
+                            </span>
+                            <span className="text-xs text-fg-subtle font-mono ml-auto">
                                 {formatTimestamp(entry.createdAt)}
                             </span>
                         </CardHeader>
