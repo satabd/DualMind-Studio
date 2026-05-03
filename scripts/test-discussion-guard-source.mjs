@@ -11,5 +11,7 @@ assert.match(backgroundSource, /system prompt\|hidden instruction\|output contra
 assert.doesNotMatch(backgroundSource, /hasAnyWholeWord\(lower, \["wit", "veo", "lyria"\]\)/, 'tool/persona keyword blacklist should be removed');
 assert.doesNotMatch(backgroundSource, /"for you"/, 'guard must not flag common substrings globally');
 assert.doesNotMatch(backgroundSource, /"i recommend"/, 'guard must allow role-appropriate recommendations');
+assert.match(backgroundSource, /العميل\\s\*\\\(\?\\s\*\[أاب\]/, 'guard should catch translated seat labels (العميل أ/ب)');
+assert.match(backgroundSource, /حضرتك\|صاحب السؤال/, 'guard should catch direct human-addressing forms');
 
 console.log('discussion guard source tests passed');

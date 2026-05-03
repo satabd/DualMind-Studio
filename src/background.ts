@@ -558,6 +558,14 @@ function getDiscussionViolation(text: string): string | null {
     if (/^(أستاذ ساطع|مرحب|شكرا|بصفتي ذكاء)/i.test(lower) || /(هل ترغب|يسعدني أن)\s*$/i.test(lower)) {
         return "You used user-facing or assistant-persona language. Speak only to your agent collaborator.";
     }
+    // EN: Identity stability — catch translated seat labels ("العميل (أ)", "العميل ب", etc.) and human-addressing forms.
+    // AR: ثبات الهوية — رصد ترجمة تسميات المقاعد ("العميل (أ)" مثلاً) وأي مخاطبة مباشرة للإنسان.
+    if (/العميل\s*\(?\s*[أاب]\s*\)?/.test(text)) {
+        return 'You translated the seat label. Use the exact labels "Agent A" and "Agent B" — do not translate them.';
+    }
+    if (/(حضرتك|صاحب السؤال)/.test(text)) {
+        return "You addressed the human. Address the counterpart agent only.";
+    }
     return null;
 }
 
