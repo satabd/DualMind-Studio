@@ -953,7 +953,12 @@ async function executeAgentTurn(
         //     to keep the UI honest about what was sent.
         // AR: نحفظ مدخلات الذاكرة المُرسَلة فعلاً في هذا الدور (وضع DISCUSSION
         //     فقط؛ سيُفعَّل وضع PING_PONG عند مهاجرته إلى blueprint).
-        promptMemorySnapshot: brainstormState.mode === "DISCUSSION" ? (memory?.entries || []) : undefined
+        promptMemorySnapshot: brainstormState.mode === "DISCUSSION" ? (memory?.entries || []) : undefined,
+        // EN: Capture the canonical prompt for this turn.  Repair / regenerate
+        //     prompts inside sanitizeDiscussionOutput are NOT captured — only
+        //     the main prompt that produced the persisted output.
+        // AR: نلتقط المطالبة الأساسية لهذا الدور (لا مطالبات الإصلاح).
+        promptSnapshot: prompt
     });
 
     if (brainstormState.mode === 'DISCUSSION') {
