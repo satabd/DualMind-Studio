@@ -62,6 +62,19 @@ assert.match(studioCss, /\.prose-studio/, 'studio.css must define prose-studio m
 assert.match(studioCss, /padding-inline-start/, 'prose-studio must use logical properties for RTL correctness');
 
 // ---------------------------------------------------------------------------
+// Header status model — lifecycle separated from phase / intent.
+// ---------------------------------------------------------------------------
+const header = readFileSync(resolve('src/studio/components/Header.tsx'), 'utf8');
+assert.match(header, /deriveLifecycle/, 'Header must derive a lifecycle status (idle/running/paused/finished)');
+assert.match(header, /finished/, 'Header must distinguish a finished session from idle');
+assert.match(header, /DIVERGE: 'Explore'/, 'Header must use friendly phase names (DIVERGE → Explore)');
+assert.match(header, /CONVERGE: 'Narrow'/, 'Header must use friendly phase names (CONVERGE → Narrow)');
+assert.match(header, /FINALIZE: 'Finalize'/, 'Header must use friendly phase names (FINALIZE → Finalize)');
+assert.match(header, /lastTurnPhase/, 'Header must derive the displayed phase from the last completed turn when finished');
+assert.doesNotMatch(header, /breadcrumbParts\.push\(state\.currentIntent\)/, 'Header must not show the raw current intent string');
+assert.doesNotMatch(header, /breadcrumbParts\.push\(state\.currentPhase\)/, 'Header must not show the raw current phase string');
+
+// ---------------------------------------------------------------------------
 // Component composition: the App tree must include all the major pieces.
 // ---------------------------------------------------------------------------
 const appPath = resolve('src/studio/App.tsx');
