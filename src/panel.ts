@@ -6,6 +6,11 @@ import { buildLastResponseMarkdown, buildSessionMarkdown } from './sessionExport
 
 type OutputTab = "transcript" | "highlights" | "ideas" | "finales";
 
+// EN: Side panel is the launcher + quick-monitor + outputs + history surface
+//     after issue #18 item 1.  Live timeline, memory previews, checkpoints,
+//     branch picker, moderator composer, and escalation card now live in the
+//     Workshop.  ELEMENTS reflects only what the panel still owns.
+// AR: لوحة الإطلاق فقط — التتبّع والذاكرة ونقاط التحقق انتقلت إلى الورشة.
 const ELEMENTS = {
     firstAgentSelect: document.getElementById('firstAgentSelect') as HTMLSelectElement,
     secondAgentSelect: document.getElementById('secondAgentSelect') as HTMLSelectElement,
@@ -29,48 +34,22 @@ const ELEMENTS = {
     monitorLiveBtn: document.getElementById('monitorLiveBtn') as HTMLButtonElement,
     pauseBtn: document.getElementById('pauseBtn') as HTMLButtonElement,
     stopBtn: document.getElementById('stopBtn') as HTMLButtonElement,
-    forceNarrowBtn: document.getElementById('forceNarrowBtn') as HTMLButtonElement,
-    requestConclusionBtn: document.getElementById('requestConclusionBtn') as HTMLButtonElement,
-    reviewEscalationBtn: document.getElementById('reviewEscalationBtn') as HTMLButtonElement,
     statusBadge: document.getElementById('status-badge') as HTMLElement,
     tabActiveBtn: document.getElementById('tabActiveBtn') as HTMLButtonElement,
     tabHistoryBtn: document.getElementById('tabHistoryBtn') as HTMLButtonElement,
     tabActiveContent: document.getElementById('tabActiveContent') as HTMLElement,
     tabHistoryContent: document.getElementById('tabHistoryContent') as HTMLElement,
-    humanModeratorCard: document.getElementById('humanModeratorCard') as HTMLElement,
-    humanFeedbackInput: document.getElementById('humanFeedbackInput') as HTMLTextAreaElement,
-    resumeWithFeedbackBtn: document.getElementById('resumeWithFeedbackBtn') as HTMLButtonElement,
-    resumeSilentBtn: document.getElementById('resumeSilentBtn') as HTMLButtonElement,
-    escalationCard: document.getElementById('escalationCard') as HTMLElement,
-    escReason: document.getElementById('escReason') as HTMLElement,
-    escDecision: document.getElementById('escDecision') as HTMLElement,
-    escOptions: document.getElementById('escOptions') as HTMLElement,
-    escRecommended: document.getElementById('escRecommended') as HTMLElement,
-    escNextStep: document.getElementById('escNextStep') as HTMLElement,
-    escFeedbackInput: document.getElementById('escFeedbackInput') as HTMLTextAreaElement,
-    resolveEscalationBtn: document.getElementById('resolveEscalationBtn') as HTMLButtonElement,
     postRunActionsCard: document.getElementById('postRunActionsCard') as HTMLElement,
     continueRoundsInput: document.getElementById('continueRoundsInput') as HTMLInputElement,
     continueBtn: document.getElementById('continueBtn') as HTMLButtonElement,
     concludeBtn: document.getElementById('concludeBtn') as HTMLButtonElement,
     postRunStatus: document.getElementById('postRunStatus') as HTMLElement,
-    framingCard: document.getElementById('framingCard') as HTMLElement,
-    memoryPreviewCard: document.getElementById('memoryPreviewCard') as HTMLElement,
-    memoryPreviewList: document.getElementById('memoryPreviewList') as HTMLElement,
-    memoryPreviewCount: document.getElementById('memoryPreviewCount') as HTMLElement,
-    promptMemoryList: document.getElementById('promptMemoryList') as HTMLElement,
-    promptMemoryCount: document.getElementById('promptMemoryCount') as HTMLElement,
-    clearMemoryBtn: document.getElementById('clearMemoryBtn') as HTMLButtonElement,
-    checkpointCards: document.getElementById('checkpointCards') as HTMLElement,
-    timelineList: document.getElementById('timelineList') as HTMLElement,
-    geminiRail: document.getElementById('geminiRail') as HTMLElement,
-    chatGptRail: document.getElementById('chatGptRail') as HTMLElement,
     livePhaseBadge: document.getElementById('livePhaseBadge') as HTMLElement,
+    quickMonitorList: document.getElementById('quickMonitorList') as HTMLElement,
     outputTranscript: document.getElementById('outputTranscript') as HTMLElement,
     outputHighlights: document.getElementById('outputHighlights') as HTMLElement,
     outputIdeas: document.getElementById('outputIdeas') as HTMLElement,
     outputFinales: document.getElementById('outputFinales') as HTMLElement,
-    branchList: document.getElementById('branchList') as HTMLElement,
     exportLastBtn: document.getElementById('exportLastBtn') as HTMLButtonElement,
     exportFullBtn: document.getElementById('exportFullBtn') as HTMLButtonElement,
     exportStatus: document.getElementById('exportStatus') as HTMLElement,
@@ -345,142 +324,28 @@ function switchTab(tab: 'active' | 'history') {
     if (tab === 'history') loadHistory();
 }
 
-function renderAgentRails() {
-    const session = currentSession;
-    const state = currentState;
-    const firstSpeaker = state?.firstSpeaker || session?.firstSpeaker || "Gemini";
-    const lastGemini = session?.transcript.filter(entry => entry.agent === "Gemini").slice(-1)[0];
-    const lastChat = session?.transcript.filter(entry => entry.agent === "ChatGPT").slice(-1)[0];
-    const statusFor = (speaker: AgentSpeaker) => state?.active
-        ? (state.lastSpeaker === speaker ? t('justSpoke', currentLang) : t('ready', currentLang))
-        : t('idle', currentLang);
-    const seatFor = (speaker: AgentSpeaker) => firstSpeaker === speaker ? t('opensRun', currentLang) : t('secondTurn', currentLang);
-    ELEMENTS.geminiRail.innerHTML = `
-        <strong>Gemini</strong>
-        <div class="rail-meta"><span>${t('seat', currentLang)}</span><span>${seatFor("Gemini")}</span></div>
-        <div class="rail-meta"><span>${t('status', currentLang)}</span><span>${statusFor("Gemini")}</span></div>
-        <div class="rail-meta"><span>${t('intent', currentLang)}</span><span>${formatIntent(lastGemini?.intent)}</span></div>
-        <div class="rail-meta"><span>${t('repair', currentLang)}</span><span>${formatRepairStatus(lastGemini?.repairStatus)}</span></div>
-        <div class="rail-meta"><span>${t('length', currentLang)}</span><span>${lastGemini?.text.length || 0} ${t('chars', currentLang)}</span></div>`;
-    ELEMENTS.chatGptRail.innerHTML = `
-        <strong>ChatGPT</strong>
-        <div class="rail-meta"><span>${t('seat', currentLang)}</span><span>${seatFor("ChatGPT")}</span></div>
-        <div class="rail-meta"><span>${t('status', currentLang)}</span><span>${statusFor("ChatGPT")}</span></div>
-        <div class="rail-meta"><span>${t('intent', currentLang)}</span><span>${formatIntent(lastChat?.intent)}</span></div>
-        <div class="rail-meta"><span>${t('repair', currentLang)}</span><span>${formatRepairStatus(lastChat?.repairStatus)}</span></div>
-        <div class="rail-meta"><span>${t('length', currentLang)}</span><span>${lastChat?.text.length || 0} ${t('chars', currentLang)}</span></div>`;
-}
-
-function renderFraming() {
-    const framing = currentSession?.framing;
-    if (!framing) {
-        ELEMENTS.framingCard.innerHTML = `<strong>${t('goalFraming', currentLang)}</strong><div class="status-text">${t('goalFramingEmpty', currentLang)}</div>`;
-        return;
-    }
-    ELEMENTS.framingCard.innerHTML = `
-        <strong>${t('goalFraming', currentLang)}</strong>
-        <div><strong>${t('objective', currentLang)}:</strong> ${escapeHtml(framing.objective)}</div>
-        <div><strong>${t('constraints', currentLang)}:</strong> ${framing.constraints.map(item => escapeHtml(item)).join(' | ')}</div>
-        <div><strong>${t('successCriteria', currentLang)}:</strong> ${framing.successCriteria.map(item => escapeHtml(item)).join(' | ')}</div>`;
-}
-
-function renderMemoryPreview() {
-    const entries = currentSession?.memory?.entries || [];
-    ELEMENTS.memoryPreviewCount.textContent = String(entries.length);
-    ELEMENTS.clearMemoryBtn.disabled = !currentSession || entries.length === 0;
-    if (!entries.length) {
-        ELEMENTS.memoryPreviewList.innerHTML = `<div class="status-text">${t('memoryPreviewEmpty', currentLang)}</div>`;
-        return;
-    }
-
-    // EN: Show the newest compact memory entries without exposing raw transcript replay.
-    // AR: نعرض أحدث عناصر الذاكرة المختصرة دون كشف سجل المحادثة الخام.
-    ELEMENTS.memoryPreviewList.innerHTML = '';
-    entries.slice(-6).reverse().forEach(entry => {
-        ELEMENTS.memoryPreviewList.appendChild(createMemoryEntryElement(entry));
-    });
-}
-
-function renderPromptMemoryPreview() {
-    const promptMemory = selectPromptMemory(currentSession?.memory);
-    const entries = promptMemory.entries;
-    ELEMENTS.promptMemoryCount.textContent = String(entries.length);
-    if (!entries.length) {
-        ELEMENTS.promptMemoryList.innerHTML = `<div class="status-text">${t('promptMemoryEmpty', currentLang)}</div>`;
-        return;
-    }
-
-    ELEMENTS.promptMemoryList.innerHTML = '';
-    entries.forEach(entry => {
-        ELEMENTS.promptMemoryList.appendChild(createMemoryEntryElement(entry, false));
-    });
-}
-
-function createMemoryEntryElement(entry: MemoryEntry, allowPrune = true) {
-    const item = document.createElement('div');
-    item.className = 'memory-entry';
-
-    const kind = document.createElement('span');
-    kind.className = 'memory-kind';
-    kind.textContent = formatMemoryKind(entry.kind);
-
-    const text = document.createElement('span');
-    text.textContent = entry.text;
-
-    const actions = document.createElement('div');
-    actions.className = 'memory-entry-actions';
-    if (allowPrune) {
-        const pruneBtn = document.createElement('button');
-        pruneBtn.className = 'btn link';
-        pruneBtn.type = 'button';
-        pruneBtn.textContent = t('pruneMemoryEntry', currentLang);
-        pruneBtn.onclick = () => pruneSessionMemoryEntry(entry.id);
-        actions.appendChild(pruneBtn);
-    }
-
-    item.append(kind, text, actions);
-    return item;
-}
-
-function renderTimeline() {
+// EN: Quick monitor relocated from a full live timeline to a 1-2 turn preview
+//     so the panel reads as a launcher.  Full timeline lives in the Workshop
+//     (issue #18 item 1).
+// AR: عرض مختصر آخر دور أو دورين فقط — المخطط الزمني الكامل في الورشة.
+function renderQuickMonitor() {
     const transcript = currentSession?.transcript || [];
-    ELEMENTS.timelineList.innerHTML = '';
-    transcript.slice(-12).forEach(entry => {
+    const recent = transcript
+        .filter(entry => entry.agent === 'Gemini' || entry.agent === 'ChatGPT' || entry.agent === 'System')
+        .slice(-2);
+    if (!recent.length) {
+        ELEMENTS.quickMonitorList.innerHTML = `<div class="status-text">${t('quickMonitorEmpty', currentLang)}</div>`;
+        return;
+    }
+    ELEMENTS.quickMonitorList.innerHTML = '';
+    recent.forEach(entry => {
         const item = document.createElement('div');
         item.className = 'timeline-item';
         item.innerHTML = `
             <strong>${entry.agent}</strong>
             <div class="rail-meta"><span>${formatIntent(entry.intent)}</span><span>${formatPhase(entry.phase)}</span></div>
-            <div>${escapeHtml(entry.text.slice(0, 220))}${entry.text.length > 220 ? '...' : ''}</div>
-            <div class="status-text">${entry.repairStatus ? `${t('repair', currentLang)}: ${formatRepairStatus(entry.repairStatus)}` : ''}</div>`;
-        ELEMENTS.timelineList.appendChild(item);
-    });
-}
-
-function renderCheckpoints() {
-    const checkpoints = currentSession?.checkpoints || [];
-    ELEMENTS.checkpointCards.innerHTML = '';
-    checkpoints.slice(-4).reverse().forEach(checkpoint => {
-        const card = document.createElement('div');
-        card.className = 'checkpoint-card';
-        card.innerHTML = `
-            <strong>${checkpoint.label}</strong>
-            <div class="status-text">${t('turn', currentLang)} ${checkpoint.turn} · ${formatPhase(checkpoint.phase)}</div>
-            <div>${escapeHtml(checkpoint.summary)}</div>`;
-        const actions = document.createElement('div');
-        actions.className = 'actions';
-        const forkBtn = document.createElement('button');
-        forkBtn.className = 'btn secondary';
-        forkBtn.textContent = t('fork', currentLang);
-        forkBtn.onclick = () => forkCheckpoint(checkpoint.id);
-        const finaleBtn = document.createElement('button');
-        finaleBtn.className = 'btn secondary';
-        finaleBtn.textContent = t('finaleDecision', currentLang);
-        finaleBtn.onclick = () => triggerFinale('decision');
-        actions.appendChild(forkBtn);
-        actions.appendChild(finaleBtn);
-        card.appendChild(actions);
-        ELEMENTS.checkpointCards.appendChild(card);
+            <div>${escapeHtml(entry.text.slice(0, 160))}${entry.text.length > 160 ? '…' : ''}</div>`;
+        ELEMENTS.quickMonitorList.appendChild(item);
     });
 }
 
@@ -510,68 +375,27 @@ function renderOutputs() {
         : `<div class="status-text">${t('finalesEmpty', currentLang)}</div>`;
 }
 
-function renderBranches() {
-    ELEMENTS.branchList.innerHTML = '';
-    const items = (currentSession?.checkpoints || []).slice(-6).reverse();
-    if (!items.length) {
-        ELEMENTS.branchList.innerHTML = `<div class="status-text">${t('branchesEmpty', currentLang)}</div>`;
-        return;
-    }
-    items.forEach(checkpoint => {
-        const pill = document.createElement('button');
-        pill.className = 'branch-pill';
-        pill.textContent = `${checkpoint.label}`;
-        pill.onclick = () => forkCheckpoint(checkpoint.id);
-        ELEMENTS.branchList.appendChild(pill);
-    });
-}
-
-function renderEscalation(state: BrainstormState) {
-    if (state.active && state.isPaused && state.awaitingHumanDecision && state.lastEscalation) {
-        ELEMENTS.escalationCard.style.display = 'flex';
-        ELEMENTS.humanModeratorCard.style.display = 'none';
-        ELEMENTS.escReason.textContent = state.lastEscalation.reason;
-        ELEMENTS.escDecision.textContent = state.lastEscalation.decision_needed;
-        ELEMENTS.escRecommended.textContent = state.lastEscalation.recommended_option;
-        ELEMENTS.escNextStep.textContent = state.lastEscalation.next_step_after_decision;
-        ELEMENTS.escOptions.innerHTML = state.lastEscalation.options.map(opt => `<li>${escapeHtml(opt)}</li>`).join('');
-    } else {
-        ELEMENTS.escalationCard.style.display = 'none';
-        ELEMENTS.humanModeratorCard.style.display = state.active && state.isPaused ? 'flex' : 'none';
-    }
-}
-
 function renderState(state: BrainstormState) {
     currentState = state;
     const hasSessionContext = state.active || !!state.sessionId || !!currentSession;
     ELEMENTS.statusBadge.textContent = state.active ? (state.isPaused ? t('paused', currentLang) : t('running', currentLang)) : t('idle', currentLang);
     ELEMENTS.statusBadge.className = `badge ${state.active ? 'running' : 'idle'}`;
-    ELEMENTS.livePhaseBadge.textContent = formatPhase(state.currentPhase);
+    ELEMENTS.livePhaseBadge.textContent = state.active ? formatPhase(state.currentPhase) : t('idle', currentLang);
     ELEMENTS.startBtn.style.display = state.active ? 'none' : 'inline-block';
     ELEMENTS.monitorLiveBtn.style.display = state.active ? 'inline-block' : 'none';
     ELEMENTS.stopBtn.style.display = state.active ? 'inline-block' : 'none';
     ELEMENTS.pauseBtn.style.display = state.active && !state.isPaused ? 'inline-block' : 'none';
-    ELEMENTS.forceNarrowBtn.disabled = !state.active;
-    ELEMENTS.requestConclusionBtn.disabled = !hasSessionContext;
-    ELEMENTS.reviewEscalationBtn.disabled = !state.awaitingHumanDecision;
     ELEMENTS.exportLastBtn.disabled = !hasSessionContext;
     ELEMENTS.exportFullBtn.disabled = !hasSessionContext;
     document.querySelectorAll<HTMLButtonElement>('.finale-btn').forEach(button => {
         button.disabled = !hasSessionContext;
     });
     ELEMENTS.postRunActionsCard.style.display = !state.active && state.currentRound > 0 ? 'flex' : 'none';
-    renderEscalation(state);
 }
 
 function renderSession() {
-    renderAgentRails();
-    renderFraming();
-    renderMemoryPreview();
-    renderPromptMemoryPreview();
-    renderTimeline();
-    renderCheckpoints();
+    renderQuickMonitor();
     renderOutputs();
-    renderBranches();
 }
 
 async function refreshActiveSession() {
@@ -614,6 +438,11 @@ function startRun() {
         }
         saveUIConfig();
         refreshActiveSession();
+        // EN: Side panel is now the launcher; the live timeline + steering
+        //     surfaces all live in the Workshop window.  Open it automatically
+        //     on Start Run so the user lands where the live work happens.
+        // AR: لوحة الإطلاق فقط؛ نفتح نافذة الورشة تلقائياً عند بدء الجلسة.
+        createTab('studio.html');
     });
 }
 
@@ -625,14 +454,6 @@ function stopRun() {
     sendRuntimeMessage({ action: "stopBrainstorm" }, null).then(refreshActiveSession);
 }
 
-function resumeRun(withFeedback: boolean, feedback?: string) {
-    const text = withFeedback ? (feedback ?? ELEMENTS.humanFeedbackInput.value.trim()) : "";
-    if (withFeedback && !text) return;
-    ELEMENTS.humanFeedbackInput.value = "";
-    ELEMENTS.escFeedbackInput.value = "";
-    sendRuntimeMessage({ action: "resumeBrainstorm", feedback: text }, null).then(refreshActiveSession);
-}
-
 function continueRun() {
     sendRuntimeMessage({ action: "continueBrainstorm", additionalRounds: parseInt(ELEMENTS.continueRoundsInput.value) || 2 }, null).then(refreshActiveSession);
 }
@@ -641,34 +462,6 @@ function triggerFinale(finaleType: FinaleType) {
     sendRuntimeMessage({ action: "generateFinale", finaleType }, null).then(() => {
         setTimeout(refreshActiveSession, 1000);
     });
-}
-
-function forkCheckpoint(checkpointId: string) {
-    if (!currentSession) return;
-    sendRuntimeMessage({
-        action: "createBranchFromCheckpoint",
-        sessionId: currentSession.id,
-        checkpointId,
-        branchLabel: `Branch from ${checkpointId.slice(0, 4)}`
-    }, null).then(() => {
-        switchTab('active');
-    });
-}
-
-function clearSessionMemory() {
-    if (!currentSession) return;
-    if (!confirm(t('clearMemoryConfirm', currentLang))) return;
-    sendRuntimeMessage({ action: "clearSessionMemory", sessionId: currentSession.id }, null).then(refreshActiveSession);
-}
-
-function pruneSessionMemoryEntry(entryId: string) {
-    if (!currentSession) return;
-    if (!confirm(t('pruneMemoryConfirm', currentLang))) return;
-    sendRuntimeMessage({
-        action: "pruneSessionMemoryEntry",
-        sessionId: currentSession.id,
-        entryId
-    }, null).then(refreshActiveSession);
 }
 
 function openLiveMonitor() {
@@ -873,21 +666,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     ELEMENTS.monitorLiveBtn.addEventListener('click', openLiveMonitor);
     ELEMENTS.pauseBtn.addEventListener('click', pauseRun);
     ELEMENTS.stopBtn.addEventListener('click', stopRun);
-    ELEMENTS.forceNarrowBtn.addEventListener('click', () => {
-        ELEMENTS.humanFeedbackInput.value = 'Narrow the discussion. Compare the top options directly, drop weaker branches, and move toward a conclusion.';
-        sendRuntimeMessage({ action: "pauseBrainstorm" }, null).then(refreshActiveSession);
-    });
-    ELEMENTS.requestConclusionBtn.addEventListener('click', () => triggerFinale('executive'));
-    ELEMENTS.reviewEscalationBtn.addEventListener('click', () => ELEMENTS.escalationCard.scrollIntoView({ behavior: 'smooth', block: 'center' }));
-    ELEMENTS.resumeWithFeedbackBtn.addEventListener('click', () => resumeRun(true));
-    ELEMENTS.resumeSilentBtn.addEventListener('click', () => resumeRun(false));
-    ELEMENTS.resolveEscalationBtn.addEventListener('click', () => resumeRun(true, ELEMENTS.escFeedbackInput.value.trim()));
     ELEMENTS.continueBtn.addEventListener('click', continueRun);
     ELEMENTS.concludeBtn.addEventListener('click', () => triggerFinale('executive'));
     ELEMENTS.exportLastBtn.addEventListener('click', () => handleExport('last'));
     ELEMENTS.exportFullBtn.addEventListener('click', () => handleExport('full'));
     ELEMENTS.saveProfileBtn.addEventListener('click', saveProfile);
-    ELEMENTS.clearMemoryBtn.addEventListener('click', clearSessionMemory);
     ELEMENTS.clearLocalDataBtn.addEventListener('click', clearLocalData);
     ELEMENTS.refreshHistoryBtn.addEventListener('click', loadHistory);
     ELEMENTS.closeHistoryDetailBtn.addEventListener('click', () => { ELEMENTS.historyDetailView.style.display = 'none'; });

@@ -157,6 +157,7 @@
 
                         <div class="actions">
                             <button id="startBtn" class="btn primary" data-i18n="startRun">Start Run</button>
+                            <button id="pauseBtn" class="btn secondary" style="display:none;" data-i18n="pause">Pause</button>
                             <button id="monitorLiveBtn" class="btn secondary" style="display:none;" data-i18n="monitorLive">Monitor Live</button>
                             <button id="stopBtn" class="btn danger" style="display:none;" data-i18n="stop">Stop</button>
                         </div>
@@ -165,88 +166,34 @@
 
                 <div class="zone zone-live card">
                     <div class="section-head">
-                        <h2 data-i18n="liveSession">Live Session</h2>
-                        <span class="eyebrow" data-i18n="liveSessionEyebrow">Monitor the current run, checkpoints, and agent state</span>
+                        <h2 data-i18n="liveSession">Quick monitor</h2>
+                        <span class="eyebrow" data-i18n="liveSessionEyebrow">Open the Workshop window for the full live timeline and steering</span>
                     </div>
 
                     <div class="workshop-launcher-banner">
-                        <p data-i18n="workshopLauncherHint">Open the Studio Workshop window for the full live timeline, memory inspector, and steering controls. The side panel below stays useful as a quick monitor and for generating outputs.</p>
+                        <p data-i18n="workshopLauncherHint">Open the Studio Workshop window for the full live timeline, memory inspector, and steering controls. The side panel here stays useful as a launcher, a quick monitor, and for generating outputs.</p>
                         <button id="openWorkshopBannerBtn" class="btn primary" type="button" data-i18n="openWorkshop">Open Studio Workshop</button>
                     </div>
 
-                    <div class="agent-rails">
-                        <div id="geminiRail" class="agent-rail"></div>
-                        <div id="chatGptRail" class="agent-rail"></div>
-                    </div>
-
-                    <div id="framingCard" class="framing-card"></div>
-
-                    <div id="memoryPreviewCard" class="framing-card memory-preview">
+                    <div class="quick-monitor">
                         <div class="timeline-head">
-                            <span data-i18n="memoryPreview">Session Memory</span>
-                            <span id="memoryPreviewCount" class="phase-badge">0</span>
+                            <span data-i18n="latestActivity">Latest activity</span>
+                            <span id="livePhaseBadge" class="phase-badge">Idle</span>
                         </div>
-                        <div id="memoryPreviewList" class="memory-preview-list">
-                            <div class="status-text" data-i18n="memoryPreviewEmpty">Memory entries will appear after checkpoints or moderator decisions.</div>
-                        </div>
-                        <div class="prompt-memory-preview">
-                            <div class="timeline-head">
-                                <span data-i18n="promptMemoryPreview">Prompt-Used Memory</span>
-                                <span id="promptMemoryCount" class="phase-badge">0</span>
-                            </div>
-                            <div id="promptMemoryList" class="memory-preview-list">
-                                <div class="status-text" data-i18n="promptMemoryEmpty">Selected prompt memory will appear here.</div>
-                            </div>
-                        </div>
-                        <div class="actions memory-preview-actions">
-                            <button id="clearMemoryBtn" class="btn secondary" type="button" data-i18n="clearMemory">Clear Memory</button>
+                        <div id="quickMonitorList" class="quick-monitor-list">
+                            <div class="status-text" data-i18n="quickMonitorEmpty">No turns yet. Start a run to see the latest activity here, or open the Workshop for the full timeline.</div>
                         </div>
                     </div>
-
-                    <div id="checkpointCards" class="checkpoint-cards"></div>
-
-                    <div class="timeline-head">
-                        <span data-i18n="liveTimeline">Live Timeline</span>
-                        <span id="livePhaseBadge" class="phase-badge">DIVERGE</span>
-                    </div>
-                    <div id="timelineList" class="timeline-list"></div>
                 </div>
 
                 <div class="zone zone-control card">
                     <div class="section-head">
-                        <h2 data-i18n="interventionDock">Intervention Dock</h2>
-                        <span class="eyebrow" data-i18n="interventionDockEyebrow">Steer without breaking flow</span>
-                    </div>
-
-                    <div class="dock-actions">
-                        <button id="pauseBtn" class="btn secondary" style="display:none;" data-i18n="pause">Pause</button>
-                        <button id="forceNarrowBtn" class="btn secondary" type="button" data-i18n="forceNarrow">Force Narrow</button>
-                        <button id="requestConclusionBtn" class="btn secondary" type="button" data-i18n="requestConclusion">Request Conclusion</button>
-                        <button id="reviewEscalationBtn" class="btn secondary" type="button" data-i18n="reviewEscalation">Review Escalation</button>
-                    </div>
-
-                    <div id="humanModeratorCard" class="dock-card" style="display:none;">
-                        <h3 data-i18n="moderatorOverride">Moderator Override</h3>
-                        <textarea id="humanFeedbackInput" rows="4" data-i18n-placeholder="moderatorOverridePlaceholder" placeholder="Inject steering, constraints, or course-correction..."></textarea>
-                        <div class="actions">
-                            <button id="resumeWithFeedbackBtn" class="btn primary" data-i18n="resumeWithFeedback">Resume with Feedback</button>
-                            <button id="resumeSilentBtn" class="btn secondary" data-i18n="resumeSilently">Resume Silently</button>
-                        </div>
-                    </div>
-
-                    <div id="escalationCard" class="dock-card" style="display:none;">
-                        <h3 data-i18n="escalationTriggered">Escalation Triggered</h3>
-                        <div class="data-pair"><strong data-i18n="escalationReason">Reason</strong><span id="escReason"></span></div>
-                        <div class="data-pair"><strong data-i18n="decisionNeeded">Decision Needed</strong><span id="escDecision"></span></div>
-                        <div class="data-pair"><strong data-i18n="recommendedOption">Recommended</strong><span id="escRecommended"></span></div>
-                        <div class="data-pair"><strong data-i18n="nextStep">Next Step</strong><span id="escNextStep"></span></div>
-                        <div class="data-pair"><strong data-i18n="options">Options</strong><ul id="escOptions"></ul></div>
-                        <textarea id="escFeedbackInput" rows="4" data-i18n-placeholder="decisionPlaceholder" placeholder="Type your decision here to resolve the escalation..."></textarea>
-                        <button id="resolveEscalationBtn" class="btn primary" data-i18n="resolveEscalation">Resolve Escalation</button>
+                        <h2 data-i18n="interventionDock">Generate output</h2>
+                        <span class="eyebrow" data-i18n="interventionDockEyebrow">Continue the run, wrap it up, or shape a final synthesis</span>
                     </div>
 
                     <div id="postRunActionsCard" class="dock-card" style="display:none;">
-                        <h3 data-i18n="continueSession">Continue Session</h3>
+                        <h3 data-i18n="continueSession">Add more rounds</h3>
                         <div class="two-col">
                             <div class="form-group">
                                 <label for="continueRoundsInput" data-i18n="additionalRounds">Additional Rounds</label>
@@ -255,13 +202,13 @@
                         </div>
                         <div class="actions">
                             <button id="continueBtn" class="btn primary" data-i18n="continue">Continue</button>
-                            <button id="concludeBtn" class="btn secondary" data-i18n="finalConclusion">Final Conclusion</button>
+                            <button id="concludeBtn" class="btn secondary" data-i18n="finalConclusion">Wrap up</button>
                         </div>
                         <div id="postRunStatus" class="status-text"></div>
                     </div>
 
                     <div class="dock-card">
-                        <h3 data-i18n="finales">Finales</h3>
+                        <h3 data-i18n="finales">Generate Output</h3>
                         <div class="field-help" data-i18n="finalesHelp">Generate a shaped output from the latest session state without restarting the agent loop.</div>
                         <div class="finale-grid">
                             <button class="btn secondary finale-btn" data-finale="executive" type="button" data-i18n="finaleExecutive">Executive</button>
@@ -276,7 +223,7 @@
                 <div class="zone zone-output card">
                     <div class="section-head">
                         <h2 data-i18n="outputs">Outputs</h2>
-                        <span class="eyebrow" data-i18n="outputsHelp">Transcript, artifacts, branch actions, and export</span>
+                        <span class="eyebrow" data-i18n="outputsHelp">Transcript and artifacts. Branches and checkpoints live in the Workshop.</span>
                     </div>
 
                     <div class="output-tabs">
@@ -290,14 +237,6 @@
                     <div id="outputHighlights" class="output-panel"></div>
                     <div id="outputIdeas" class="output-panel"></div>
                     <div id="outputFinales" class="output-panel"></div>
-
-                    <div class="branch-section">
-                        <div class="timeline-head">
-                            <span data-i18n="branchPicker">Branch Picker</span>
-                            <span class="eyebrow" data-i18n="branchPickerHelp">Fork from checkpoints and compare later</span>
-                        </div>
-                        <div id="branchList" class="branch-list"></div>
-                    </div>
 
                     <div class="actions">
                         <button id="exportLastBtn" class="btn secondary" data-i18n="lastResponse">Last Response</button>
