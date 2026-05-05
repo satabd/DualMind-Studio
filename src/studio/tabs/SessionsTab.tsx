@@ -3,6 +3,8 @@ import { SessionsList } from '../components/SessionsList.js';
 import { Timeline } from '../components/Timeline.js';
 import { Composer } from '../components/Composer.js';
 import { EscalationCard } from '../components/EscalationCard.js';
+import { CheckpointsList } from '../components/CheckpointsList.js';
+import { BranchList } from '../components/BranchList.js';
 
 export function SessionsTab() {
     const { selectedSessionId, state } = useWorkshopStore();
@@ -29,6 +31,8 @@ export function SessionsTab() {
                 <div className="flex-1 min-h-0 rounded-lg border border-border bg-surface overflow-hidden flex">
                     <Timeline />
                 </div>
+                <CheckpointsList />
+                <BranchList />
                 <EscalationCard />
                 <Composer />
             </section>

@@ -6,6 +6,8 @@ const panelHtml = readFileSync(resolve('src/panel.html'), 'utf8');
 const panelTs = readFileSync(resolve('src/panel.ts'), 'utf8');
 const i18n = readFileSync(resolve('src/i18n.ts'), 'utf8');
 
+// v0.2.2 #18 item 1: Branch picker moved to the Workshop, so its data-i18n
+// no longer exists in panel.html.  Keep coverage for keys still present.
 const requiredHtmlKeys = [
   'studioSubtitle',
   'studioSetup',
@@ -20,8 +22,7 @@ const requiredHtmlKeys = [
   'liveSession',
   'interventionDock',
   'finalesHelp',
-  'outputsHelp',
-  'branchPickerHelp'
+  'outputsHelp'
 ];
 
 for (const key of requiredHtmlKeys) {

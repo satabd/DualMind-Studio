@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "DualMind Studio",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "description": "Browser-based multi-agent studio for ChatGPT and Gemini. No API keys required.",
     "permissions": [
         "activeTab",
