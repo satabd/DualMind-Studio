@@ -1,6 +1,6 @@
 {
     "name": "dualmind-studio",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "description": "Browser-based multi-agent studio for ChatGPT and Gemini with room for memory, identity, and layered prompting.",
     "scripts": {
         "dev": "vite build --watch",

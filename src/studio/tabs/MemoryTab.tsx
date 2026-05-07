@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useWorkshopStore } from '../store/workshop.js';
 import type { MemoryEntryKind } from '../../types.js';
-import { Card, CardBody, CardHeader, CardTitle } from '../ui/card.js';
+import { Card, CardBody, CardHeader } from '../ui/card.js';
 import { Badge } from '../ui/badge.js';
 import { Button } from '../ui/button.js';
 import { cn, formatTimestamp } from '../lib/utils.js';
+import { clearSessionMemory, pruneSessionMemoryEntry } from '../lib/extension.js';
 
 const KIND_LABEL: Record<MemoryEntryKind, string> = {
     fact: 'Fact',
@@ -32,9 +33,10 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 
 export function MemoryTab() {
-    const { selectedSession } = useWorkshopStore();
+    const { selectedSession, refresh } = useWorkshopStore();
     const [filter, setFilter] = useState<MemoryEntryKind | 'all'>('all');
     const [search, setSearch] = useState('');
+    const [confirmingClear, setConfirmingClear] = useState(false);
 
     const entries = selectedSession?.memory?.entries || [];
     const tombstones = selectedSession?.memory?.prunedEntryKeys?.length || 0;
@@ -65,6 +67,19 @@ export function MemoryTab() {
             </div>
         );
     }
+
+    const sessionId = selectedSession.id;
+
+    const handleClear = async () => {
+        await clearSessionMemory(sessionId);
+        setConfirmingClear(false);
+        await refresh();
+    };
+
+    const handlePrune = async (entryId: string) => {
+        await pruneSessionMemoryEntry(sessionId, entryId);
+        await refresh();
+    };
 
     return (
         <div id="memoryTabContent" className="flex flex-col gap-4 min-h-[calc(100vh-160px)]">
@@ -97,6 +112,36 @@ export function MemoryTab() {
                     className="ml-auto h-8 px-3 text-sm rounded-md border border-border bg-surface-muted text-fg focus:outline-none focus:shadow-focus focus:border-accent"
                     dir="auto"
                 />
+                {confirmingClear ? (
+                    <div className="flex items-center gap-1 text-xs">
+                        <span className="text-fg-muted">Clear all memory for this session?</span>
+                        <Button
+                            id="clearMemoryConfirmBtn"
+                            variant="primary"
+                            size="sm"
+                            onClick={handleClear}
+                        >
+                            Confirm
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setConfirmingClear(false)}
+                        >
+                            Cancel
+                        </Button>
+                    </div>
+                ) : (
+                    <Button
+                        id="clearMemoryBtn"
+                        variant="ghost"
+                        size="sm"
+                        disabled={!entries.length}
+                        onClick={() => setConfirmingClear(true)}
+                    >
+                        Clear all
+                    </Button>
+                )}
             </div>
 
             {tombstones > 0 && (
@@ -134,6 +179,17 @@ export function MemoryTab() {
                                     ))}
                                 </div>
                             )}
+                            <div className="flex justify-end pt-1">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handlePrune(entry.id)}
+                                    title="Prune this entry"
+                                    className="memory-entry-actions text-[10px] text-fg-subtle"
+                                >
+                                    Prune
+                                </Button>
+                            </div>
                         </CardBody>
                     </Card>
                 ))}

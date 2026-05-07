@@ -46,3 +46,18 @@ export async function resumeBrainstorm(feedback?: string) {
 export async function stopBrainstorm() {
     return sendRuntimeMessage({ action: 'stopBrainstorm' }, null);
 }
+
+export async function clearSessionMemory(sessionId: string) {
+    return sendRuntimeMessage({ action: 'clearSessionMemory', sessionId }, null);
+}
+
+export async function pruneSessionMemoryEntry(sessionId: string, entryId: string) {
+    return sendRuntimeMessage({ action: 'pruneSessionMemoryEntry', sessionId, entryId }, null);
+}
+
+export async function createBranchFromCheckpoint(sessionId: string, checkpointId: string, branchLabel?: string) {
+    return sendRuntimeMessage(
+        { action: 'createBranchFromCheckpoint', sessionId, checkpointId, branchLabel },
+        null
+    );
+}

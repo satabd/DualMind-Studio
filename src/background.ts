@@ -1095,15 +1095,15 @@ async function runBrainstormLoop(runId: string) {
 }
 
 async function sendPromptToTab(tabId: number, prompt: string): Promise<string> {
+    // EN: The orchestrator never moves, focuses, or activates tabs or windows.
+    //     Hidden-tab throttling is a Chrome browser feature; the correct
+    //     remedy is the user-side allowlist at chrome://settings/performance,
+    //     which the Workshop's ThrottlingNotice already surfaces.  Yanking
+    //     user focus on every turn fights the wrong part of the system and
+    //     contradicts the durable rule in docs/architecture-studio-workshop.md.
+    // AR: لا ينقل المنسّق التبويبات أو ينقل التركيز إليها — وقف العمل في
+    //     التبويبات المخفية يُعالَج عبر إعدادات Chrome، وليس بسرقة التركيز.
     await ensureInjected(tabId);
-    try {
-        await chrome.tabs.update(tabId, { active: true });
-        const tab = await chrome.tabs.get(tabId);
-        if (tab.windowId) await chrome.windows.update(tab.windowId, { focused: true });
-        await wait(200);
-    } catch {
-        log(`Failed to focus tab ${tabId}`, 'error');
-    }
 
     const countsBefore = await sendMessage(tabId, { action: "getTurnCounts" });
     const minUserTurnCount = typeof countsBefore?.user === "number" ? countsBefore.user + 1 : undefined;

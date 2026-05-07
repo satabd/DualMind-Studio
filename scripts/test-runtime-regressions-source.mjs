@@ -42,6 +42,9 @@ assert.match(typesSource, /promptSnapshot\?:\s*string/, 'TranscriptEntry must ca
 assert.match(backgroundSource, /promptSnapshot:\s*prompt/, 'persistTurn must capture the canonical prompt that produced this turn');
 assert.match(timelineSource, /entry\.promptSnapshot/, 'Timeline must surface the prompt snapshot via a Show prompt affordance');
 assert.match(timelineSource, /Show prompt/, 'Timeline must label the prompt-inspection toggle "Show prompt"');
+// v0.2.2 #18 item 2 — orchestrator never moves/focuses tabs or windows.
+assert.doesNotMatch(backgroundSource, /chrome\.tabs\.update\([^)]*active:\s*true/, 'orchestrator must not activate tabs on every turn (see docs/architecture-studio-workshop.md)');
+assert.doesNotMatch(backgroundSource, /chrome\.windows\.update\([^)]*focused:\s*true/, 'orchestrator must not focus windows on every turn (yanks user focus, fights hidden-tab throttling the wrong way)');
 assert.match(backgroundSource, /structural discussion guard/i, 'discussion guard should be structural, not broad phrase filtering');
 assert.doesNotMatch(backgroundSource, /"let me know"/, 'discussion guard should not ban common substrings globally');
 assert.doesNotMatch(backgroundSource, /"for you"/, 'discussion guard should not ban common substrings globally');
