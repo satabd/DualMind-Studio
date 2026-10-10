@@ -6,6 +6,15 @@ import TurndownService from 'turndown';
 const isGemini = (): boolean => window.location.hostname.includes('gemini.google.com');
 const isChatGPT = (): boolean => window.location.hostname.includes('chatgpt.com') || window.location.hostname.includes('openai.com');
 
+// --- ChatGPT selectors ---
+// EN: ChatGPT changed its page in 2026. The first selector in each list was checked on the
+//     live site on 2026-10-09. The older selectors stay as fallbacks for older layouts.
+// AR: غيّر ChatGPT بنية الصفحة في 2026. المحدِّد الأول في كل قائمة تم التحقق منه على الموقع
+//     الحي بتاريخ 2026-10-09، والمحدِّدات القديمة تبقى كبدائل.
+const CHATGPT_USER = '[data-user-message-bubble], [data-message-author-role="user"]';
+const CHATGPT_ASSISTANT = '[data-markdown-text-style="assistant-message"], [data-message-author-role="assistant"]';
+const CHATGPT_INPUT = 'form[data-chatgpt-composer] div[contenteditable="true"][role="textbox"], #prompt-textarea, div.ProseMirror[contenteditable="true"]';
+
 // --- Main Listener ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch (request.action) {
@@ -89,13 +98,13 @@ function setTextInEditable(el: HTMLElement, text: string) {
 
 function getUserMessageCount(): number {
     if (isGemini()) return document.querySelectorAll('user-query, [data-test-id="user-query"]').length;
-    if (isChatGPT()) return document.querySelectorAll('[data-message-author-role="user"]').length;
+    if (isChatGPT()) return document.querySelectorAll(CHATGPT_USER).length;
     return 0;
 }
 
 function getResponseMessageCount(): number {
     if (isGemini()) return document.querySelectorAll('model-response, .model-response').length;
-    if (isChatGPT()) return document.querySelectorAll('[data-message-author-role="assistant"]').length;
+    if (isChatGPT()) return document.querySelectorAll(CHATGPT_ASSISTANT).length;
     return 0;
 }
 
@@ -104,7 +113,7 @@ function findInputArea(): HTMLElement | null {
         return document.querySelector('div[contenteditable="true"][role="textbox"], .ql-editor, textarea') as HTMLElement;
     }
     if (isChatGPT()) {
-        return document.querySelector('#prompt-textarea') as HTMLElement;
+        return document.querySelector(CHATGPT_INPUT) as HTMLElement;
     }
     return null;
 }
@@ -115,7 +124,16 @@ function findSendButton(): HTMLElement | null {
         return candidates.find(isSendControl) || null;
     }
     if (isChatGPT()) {
-        return document.querySelector('button[data-testid="send-button"]') as HTMLElement;
+        // EN: The composer has one submit button. Its label is "Send", and "Stop" while an
+        //     answer is streaming. isSendControl() refuses the Stop state, so a prompt can
+        //     never cancel a running answer by mistake.
+        // AR: زر الإرسال نفسه يتحول إلى "Stop" أثناء توليد الإجابة، و isSendControl ترفض هذه الحالة.
+        const candidates = [
+            document.querySelector<HTMLElement>('form[data-chatgpt-composer] button[type="submit"]'),
+            document.querySelector<HTMLElement>('button[data-testid="send-button"]'),
+            ...Array.from(document.querySelectorAll<HTMLElement>('button[aria-label^="Send"]'))
+        ];
+        return candidates.find(el => !!el && isSendControl(el)) || null;
     }
     return null;
 }
@@ -136,6 +154,9 @@ function isStopButtonVisible(): boolean {
         return !!document.querySelector('button[aria-label*="Stop"]');
     }
     if (isChatGPT()) {
+        // EN: Each turn carries its own state: "in_progress" while the answer streams.
+        const states = document.querySelectorAll('[data-talvt-turn-state]');
+        if (states.length && states[states.length - 1].getAttribute('data-talvt-turn-state') === 'in_progress') return true;
         return !!document.querySelector('button[aria-label*="Stop"]');
     }
     return false;
@@ -143,18 +164,30 @@ function isStopButtonVisible(): boolean {
 
 async function waitForIdle(options: { minUserTurnCount?: number; minResponseTurnCount?: number } = {}): Promise<void> {
     return new Promise(resolve => {
+        // EN: One hard stop for the whole wait (3 minutes). Before, the wait had no limit while
+        //     the Stop button stayed visible, so a stuck page could block the run forever.
+        // AR: حد أقصى واحد لكامل الانتظار (3 دقائق) حتى لا يتوقف التشغيل إذا علقت الصفحة.
+        let stopObserver: MutationObserver | null = null;
+        let started = false;
+        const hardStop = setTimeout(() => {
+            stopObserver?.disconnect();
+            resolve();
+        }, 180000);
+
         // 1. Give the UI time to register the click, make the network request, and show the Stop button
         setTimeout(() => {
             if (isStopButtonVisible()) {
                 // Wait for stop button to disappear
-                const observer = new MutationObserver(() => {
-                    if (!isStopButtonVisible()) {
-                        observer.disconnect();
+                stopObserver = new MutationObserver(() => {
+                    if (!started && !isStopButtonVisible()) {
+                        started = true;
+                        stopObserver?.disconnect();
                         checkTextStabilization();
                     }
                 });
-                observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+                stopObserver.observe(document.body, { childList: true, subtree: true, attributes: true });
             } else {
+                started = true;
                 checkTextStabilization();
             }
         }, 2000);
@@ -194,15 +227,13 @@ async function waitForIdle(options: { minUserTurnCount?: number; minResponseTurn
 
                 if (canResolve) {
                     clearInterval(checkInterval);
+                    clearTimeout(hardStop);
                     resolve();
                 }
             }, 500);
 
-            // Absolute maximum timeout (3 minutes)
-            setTimeout(() => {
-                clearInterval(checkInterval);
-                resolve();
-            }, 180000);
+            // Stop sampling when the hard stop of the whole wait fires (3 minutes in total).
+            setTimeout(() => clearInterval(checkInterval), 180000);
         }
     });
 }
@@ -216,7 +247,7 @@ function getLastResponseText(): string {
         const nodes = document.querySelectorAll('model-response, .model-response');
         if (nodes.length) node = nodes[nodes.length - 1];
     } else {
-        const nodes = document.querySelectorAll('[data-message-author-role="assistant"]');
+        const nodes = document.querySelectorAll(CHATGPT_ASSISTANT);
         if (nodes.length) node = nodes[nodes.length - 1];
     }
 
@@ -233,9 +264,12 @@ function mainScrape(): string {
             out += `## ${role}\n\n${htmlToMarkdown(t as HTMLElement)}\n\n`;
         });
     } else {
-        const turns = document.querySelectorAll('[data-message-author-role]');
+        // EN: Known limit: ChatGPT keeps only the last few turns in the page and loads older
+        //     ones on scroll. This export contains the turns that are in the page right now.
+        // AR: قيد معروف: ChatGPT يبقي آخر الأدوار فقط في الصفحة، فيحتوي التصدير على الأدوار الظاهرة حالياً.
+        const turns = document.querySelectorAll(`${CHATGPT_USER}, ${CHATGPT_ASSISTANT}`);
         turns.forEach(t => {
-            const role = t.getAttribute('data-message-author-role') === 'user' ? 'User' : 'Assistant';
+            const role = t.matches(CHATGPT_USER) ? 'User' : 'Assistant';
             out += `## ${role}\n\n${htmlToMarkdown(t as HTMLElement)}\n\n`;
         });
     }
@@ -248,10 +282,28 @@ function htmlToMarkdown(root: HTMLElement): string {
     // Remove common action buttons
     const buttons = clone.querySelectorAll('button, .action-buttons, .copy-button');
     buttons.forEach(b => b.remove());
-    
+    // EN: Gemini adds hidden screen-reader labels ("You said", "Gemini said") inside each turn.
+    //     They are not part of the message, so they must not reach the other agent.
+    // AR: Gemini يضيف تسميات مخفية لقارئ الشاشة داخل كل دور، وهي ليست جزءاً من الرسالة.
+    clone.querySelectorAll('.cdk-visually-hidden').forEach(n => n.remove());
+
     const turndownService = new TurndownService({
         headingStyle: 'atx',
         codeBlockStyle: 'fenced'
+    });
+    // EN: ChatGPT now draws code blocks as an editor (one element per line), not as <pre>.
+    //     Known limit: for very long blocks only the lines drawn in the page are available here.
+    // AR: ChatGPT يعرض الشيفرة الآن كمحرر (عنصر لكل سطر) وليس <pre>، وفي الكتل الطويلة جداً تتوفر الأسطر المرسومة فقط.
+    turndownService.addRule('chatgptCodeBlock', {
+        filter: node => node instanceof HTMLElement && node.matches('[data-markdown-copy="code-block"]'),
+        replacement: (_content, node) => {
+            const el = node as HTMLElement;
+            const header = el.querySelector('[data-markdown-copy="exclude"]');
+            const lang = (header?.textContent || '').trim().split(/\s+/)[0]?.toLowerCase() || '';
+            const lines = Array.from(el.querySelectorAll('.cm-line')).map(line => line.textContent || '');
+            const code = lines.length ? lines.join('\n') : (el.querySelector('code')?.textContent || '');
+            return `\n\n\`\`\`${lang}\n${code}\n\`\`\`\n\n`;
+        }
     });
     
     let text = turndownService.turndown(clone);
